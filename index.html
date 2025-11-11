@@ -1,0 +1,77 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Memes para Parejas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #111827; }
+        .hidden { display: none !important; }
+        .dot { transition: transform 0.3s ease; }
+        input[type="checkbox"]:checked + .dot { transform: translateX(1.5rem); }
+        input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; background: #4a5568; border-radius: 5px; outline: none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; background: #a78bfa; border-radius: 50%; cursor: pointer; }
+        input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; background: #a78bfa; border-radius: 50%; cursor: pointer; }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="root">
+        <div class="min-h-screen bg-gray-900 text-white font-sans p-4 sm:p-6 lg:p-8">
+            <div class="container mx-auto max-w-7xl pb-24">
+                <header class="text-center mb-8">
+                    <h1 class="text-4xl sm:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-500 pb-2">
+                        Generador de Contenido Viral
+                    </h1>
+                    <p class="text-lg text-gray-400 mt-2 max-w-3xl mx-auto">
+                        Crea memes o frases para tus redes sociales con un solo clic.
+                    </p>
+                </header>
+
+                <main>
+                    <div id="api-key-manager-container"></div>
+                    
+                    <div class="flex justify-center mb-8">
+                        <div class="bg-gray-800 p-1.5 rounded-xl flex gap-2 border border-gray-700">
+                            <button id="mode-meme-btn" class="px-5 py-2 text-base font-semibold rounded-lg transition-colors bg-indigo-600 text-white shadow-md">😂 Modo Meme</button>
+                            <button id="mode-frase-btn" class="px-5 py-2 text-base font-semibold rounded-lg transition-colors text-gray-300 hover:bg-gray-700">✍️ Modo Frase</button>
+                        </div>
+                    </div>
+
+                    <div id="error-container" class="my-4 p-4 bg-red-900/50 border border-red-500 text-red-300 rounded-lg text-center hidden"></div>
+                    
+                    <div id="main-content">
+                        <div id="uploader-container"></div>
+                        <div id="preview-container" class="hidden"></div>
+                        <div id="results-container" class="hidden"></div>
+                        <div id="loading-container" class="hidden flex justify-center py-16">
+                           <div class="flex flex-col items-center justify-center gap-4">
+                                <div class="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-indigo-400"></div>
+                                <p id="loading-text" class="text-indigo-300 font-semibold"></p>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+
+                <footer class="fixed bottom-0 left-0 w-full bg-gray-900/80 backdrop-blur-sm p-4 border-t border-gray-700">
+                    <div class="container mx-auto max-w-7xl flex justify-center items-center gap-4" id="footer-buttons">
+                    </div>
+                </footer>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="/index.js"></script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
