@@ -36,6 +36,7 @@ const DOMElements = {
     loadingContainer: document.getElementById('loading-container'),
     loadingText: document.getElementById('loading-text'),
     footerButtons: document.getElementById('footer-buttons'),
+    mainContent: document.getElementById('main-content'),
 };
 
 // --- TEMPLATE GENERATORS ---
@@ -115,8 +116,8 @@ const getGlobalControlsHTML = () => {
                 <div id="watermark-controls">
                 ${watermark.type === 'none' ? `
                     <div class="flex gap-2">
-                        <button id="add-text-watermark-btn" class="flex-1 text-center py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-sm">Añadir Texto</button>
-                        <button id="add-image-watermark-btn" class="flex-1 text-center py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-sm">Añadir Imagen</button>
+                        <button data-action="add-text-watermark" class="flex-1 text-center py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-sm">Añadir Texto</button>
+                        <button data-action="add-image-watermark" class="flex-1 text-center py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-sm">Añadir Imagen</button>
                         <input type="file" accept="image/png, image/jpeg" id="watermark-upload" class="hidden" />
                     </div>
                 ` : `
@@ -128,7 +129,7 @@ const getGlobalControlsHTML = () => {
                             <label class="text-sm text-gray-400">Opacidad:</label>
                             <input type="range" id="watermark-opacity-slider" min="0.1" max="1" step="0.1" value="${watermark.opacity}" class="w-full" />
                         </div>
-                        <button id="remove-watermark-btn" class="text-center py-2 bg-red-800 hover:bg-red-700 rounded-lg transition-colors text-sm">Quitar Marca</button>
+                        <button data-action="remove-watermark" class="text-center py-2 bg-red-800 hover:bg-red-700 rounded-lg transition-colors text-sm">Quitar Marca</button>
                     </div>
                 `}
                 </div>
@@ -217,104 +218,21 @@ const render = () => {
         DOMElements.previewContainer.innerHTML = getPreviewHTML();
     } else if (currentView === 'results') {
         DOMElements.resultsContainer.innerHTML = getResultsHTML();
-    }
-
-    // Footer
-    DOMElements.footerButtons.innerHTML = getFooterButtonsHTML();
-
-    // Attach all event listeners
-    attachEventListeners();
-};
-
-
-// --- EVENT LISTENERS ---
-const attachEventListeners = () => {
-    // API Key
-    document.getElementById('edit-api-key-btn')?.addEventListener('click', () => {
-        state.apiKey = null;
-        render();
-    });
-    document.getElementById('save-api-key-btn')?.addEventListener('click', () => {
-        const input = document.getElementById('api-key-input');
-        if (input && input.value.trim()) {
-            state.apiKey = input.value.trim();
-            localStorage.setItem('gemini-api-key', state.apiKey);
-            render();
-        }
-    });
-
-    // Mode Switch
-    DOMElements.modeMemeBtn.addEventListener('click', () => handleModeChange('meme'));
-    DOMElements.modeFraseBtn.addEventListener('click', () => handleModeChange('frase'));
-
-    // Uploader
-    const fileUpload = document.getElementById('file-upload');
-    if (fileUpload) {
-        fileUpload.addEventListener('change', (e) => handleFilesSelected(Array.from(e.target.files || [])));
-    }
-    
-    // Main Actions
-    document.getElementById('reset-btn')?.addEventListener('click', handleReset);
-    document.getElementById('generate-btn')?.addEventListener('click', handleGenerate);
-    
-    // Results Page Listeners
-    if (state.generatedMemes.length > 0) {
-        // Global Design
-        document.getElementById('show-header-toggle')?.addEventListener('change', (e) => {
-            state.designSettings.showHeader = e.target.checked;
-            render();
-        });
-        document.getElementById('avatar-img')?.addEventListener('click', () => document.getElementById('avatar-upload').click());
-        document.getElementById('avatar-upload')?.addEventListener('change', handleAvatarChange);
-        document.getElementById('profile-name-input')?.addEventListener('input', (e) => state.designSettings.profileName = e.target.value);
-        document.getElementById('profile-handle-input')?.addEventListener('input', (e) => state.designSettings.profileHandle = e.target.value);
-        
-        // Watermark
-        document.getElementById('add-text-watermark-btn')?.addEventListener('click', () => {
-            state.designSettings.watermark.type = 'text';
-            render();
-        });
-        document.getElementById('add-image-watermark-btn')?.addEventListener('click', () => document.getElementById('watermark-upload').click());
-        document.getElementById('watermark-upload')?.addEventListener('change', handleWatermarkImageChange);
-        document.getElementById('remove-watermark-btn')?.addEventListener('click', () => {
-            state.designSettings.watermark.type = 'none';
-            if (state.designSettings.watermark.imageUrl) URL.revokeObjectURL(state.designSettings.watermark.imageUrl);
-            state.designSettings.watermark.imageUrl = null;
-            render();
-        });
-        document.getElementById('watermark-text-input')?.addEventListener('input', (e) => {
-            state.designSettings.watermark.text = e.target.value;
-            render();
-        });
-        document.getElementById('watermark-size-slider')?.addEventListener('input', (e) => {
-             state.designSettings.watermark.size = parseFloat(e.target.value);
-             render();
-        });
-        document.getElementById('watermark-opacity-slider')?.addEventListener('input', (e) => {
-             state.designSettings.watermark.opacity = parseFloat(e.target.value);
-             render();
-        });
-        
-        const watermarkDraggable = document.getElementById('watermark-draggable');
-        if (watermarkDraggable) {
-           watermarkDraggable.addEventListener('mousedown', handleWatermarkDragStart);
-        }
-
-        // Meme Cards
-        document.querySelectorAll('.suggestion-btn').forEach(btn => btn.addEventListener('click', handleSuggestionClick));
-        document.querySelectorAll('.download-btn').forEach(btn => btn.addEventListener('click', handleDownload));
+        // Manually trigger autogrow for textareas after they are rendered
         document.querySelectorAll('.edit-text-area').forEach(area => {
-            area.addEventListener('input', handleMemeTextChange);
-            // Auto-grow logic
             area.style.height = 'auto';
             area.style.height = `${area.scrollHeight}px`;
         });
     }
+
+    // Footer
+    DOMElements.footerButtons.innerHTML = getFooterButtonsHTML();
 };
+
 
 // --- HANDLER FUNCTIONS ---
 const handleModeChange = (type) => {
-    if (state.titleType === type) return;
+    if (state.titleType === type || state.isLoading) return;
     handleReset();
     state.titleType = type;
     DOMElements.modeMemeBtn.classList.toggle('bg-indigo-600', type === 'meme');
@@ -397,8 +315,7 @@ const handleReset = () => {
     render();
 };
 
-const handleSuggestionClick = (e) => {
-    const button = e.currentTarget;
+const handleSuggestionClick = (button) => {
     const card = button.closest('[data-meme-id]');
     if (!card) return;
 
@@ -418,8 +335,7 @@ const handleSuggestionClick = (e) => {
     }
 };
 
-const handleDownload = async (e) => {
-    const button = e.currentTarget;
+const handleDownload = async (button) => {
     const card = button.closest('[data-meme-id]');
     if (!card) return;
     
@@ -455,8 +371,7 @@ const handleDownload = async (e) => {
     }
 };
 
-const handleMemeTextChange = (e) => {
-    const area = e.currentTarget;
+const handleMemeTextChange = (area) => {
     const card = area.closest('[data-meme-id]');
     if (!card) return;
 
@@ -540,11 +455,102 @@ const handleWatermarkDragStart = (e) => {
 };
 
 
-// --- INITIALIZATION ---
-document.addEventListener('DOMContentLoaded', () => {
+// --- INITIALIZATION & EVENT LISTENERS ---
+const initialize = () => {
+    // Load initial state
     const savedKey = localStorage.getItem('gemini-api-key');
     if (savedKey) {
         state.apiKey = savedKey;
     }
+
+    // Attach static listeners
+    DOMElements.modeMemeBtn.addEventListener('click', () => handleModeChange('meme'));
+    DOMElements.modeFraseBtn.addEventListener('click', () => handleModeChange('frase'));
+
+    // Attach delegated listeners to parent containers
+    DOMElements.apiKeyContainer.addEventListener('click', (e) => {
+        if (e.target.id === 'save-api-key-btn') {
+            const input = document.getElementById('api-key-input');
+            if (input && input.value.trim()) {
+                state.apiKey = input.value.trim();
+                localStorage.setItem('gemini-api-key', state.apiKey);
+                render();
+            }
+        } else if (e.target.id === 'edit-api-key-btn') {
+            state.apiKey = null;
+            render();
+        }
+    });
+    
+    DOMElements.uploaderContainer.addEventListener('change', (e) => {
+        if (e.target.id === 'file-upload') {
+            handleFilesSelected(Array.from(e.target.files || []));
+        }
+    });
+
+    DOMElements.footerButtons.addEventListener('click', (e) => {
+        if (e.target.id === 'reset-btn') handleReset();
+        if (e.target.id === 'generate-btn') handleGenerate();
+    });
+
+    // Delegated listeners for the results container, which is often re-rendered
+    DOMElements.resultsContainer.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target.closest('.suggestion-btn')) handleSuggestionClick(target.closest('.suggestion-btn'));
+        if (target.closest('.download-btn')) handleDownload(target.closest('.download-btn'));
+        if (target.id === 'avatar-img') document.getElementById('avatar-upload').click();
+        if (target.dataset.action === 'add-text-watermark') {
+             state.designSettings.watermark.type = 'text';
+             render();
+        }
+        if (target.dataset.action === 'add-image-watermark') {
+            document.getElementById('watermark-upload').click();
+        }
+        if (target.dataset.action === 'remove-watermark') {
+            state.designSettings.watermark.type = 'none';
+            if (state.designSettings.watermark.imageUrl) URL.revokeObjectURL(state.designSettings.watermark.imageUrl);
+            state.designSettings.watermark.imageUrl = null;
+            render();
+        }
+    });
+
+    DOMElements.resultsContainer.addEventListener('input', (e) => {
+        const target = e.target;
+        if (target.matches('.edit-text-area')) handleMemeTextChange(target);
+        if (target.id === 'profile-name-input') state.designSettings.profileName = target.value;
+        if (target.id === 'profile-handle-input') state.designSettings.profileHandle = target.value;
+        if (target.id === 'watermark-text-input') {
+            state.designSettings.watermark.text = target.value;
+            render();
+        }
+        if (target.id === 'watermark-size-slider') {
+            state.designSettings.watermark.size = parseFloat(target.value);
+            render();
+        }
+        if (target.id === 'watermark-opacity-slider') {
+            state.designSettings.watermark.opacity = parseFloat(target.value);
+            render();
+        }
+    });
+    
+    DOMElements.resultsContainer.addEventListener('change', (e) => {
+        const target = e.target;
+        if (target.id === 'show-header-toggle') {
+            state.designSettings.showHeader = target.checked;
+            render();
+        }
+        if (target.id === 'avatar-upload') handleAvatarChange(e);
+        if (target.id === 'watermark-upload') handleWatermarkImageChange(e);
+    });
+    
+    DOMElements.resultsContainer.addEventListener('mousedown', (e) => {
+        if (e.target.closest('#watermark-draggable')) {
+            handleWatermarkDragStart(e);
+        }
+    });
+
+    // Initial Render
     render();
-});
+};
+
+document.addEventListener('DOMContentLoaded', initialize);
