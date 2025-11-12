@@ -110,6 +110,41 @@ const ImageUploader: React.FC<{ onFilesSelected: (files: File[]) => void; disabl
     );
 };
 
+// Fix: Add MemeCategorySelector component
+const MemeCategorySelector: React.FC<{
+    selectedCategory: string;
+    onCategoryChange: (category: string) => void;
+    disabled: boolean;
+}> = ({ selectedCategory, onCategoryChange, disabled }) => {
+    const categories = [
+        { id: 'pareja', label: 'Amor y Pareja', icon: '💑' },
+        { id: 'familia', label: 'Familia', icon: '👩‍👧' },
+        { id: 'trabajo', label: 'Trabajo y Vida', icon: '💼' }
+    ];
+
+    return (
+        <div className="flex flex-col items-center justify-center mb-8 gap-3">
+            <h3 className="text-lg font-semibold text-gray-300">Elige el tema de tu meme:</h3>
+            <div className="flex flex-wrap justify-center gap-3">
+                {categories.map(cat => (
+                    <button
+                        key={cat.id}
+                        onClick={() => onCategoryChange(cat.id)}
+                        disabled={disabled}
+                        className={`px-4 py-2 text-base font-semibold rounded-lg transition-colors border-2 ${
+                            selectedCategory === cat.id
+                                ? 'bg-teal-500 border-teal-400 text-white shadow-lg'
+                                : 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:border-gray-500'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                        {cat.icon} {cat.label}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 const AutoGrowTextarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement>> = (props) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -124,17 +159,24 @@ const AutoGrowTextarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElemen
     return <textarea ref={textareaRef} {...props} />;
 };
 
+// Fix: Update EMOJIS to support new categories
 const EMOJIS: Record<string, string> = {
-    // Memes
-    picara: '💋',
-    sarcastica: '😏',
-    dramatica: '😭',
-    // Frases
+    // Pareja
+    sarcasmo: '😏',
+    drama: '😭',
+    indirecta: '🤫',
+    // Familia
+    nostalgia: '😌',
+    ternura: '❤️',
+    // Trabajo
+    sarcasmoTrabajo: '😤',
+    estres: '😫',
+    humorTrabajo: '😂',
+    // Frases (some are shared)
     relaciones: '💔',
     chisme: '😏',
     humor: '😅',
     reflexion: '😌',
-    sarcasmo: '😤',
 };
 
 const MemeEditorCard: React.FC<{
@@ -343,6 +385,8 @@ const App: React.FC = () => {
     const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
     const [generatedMemes, setGeneratedMemes] = useState<GeneratedMeme[]>([]);
     const [titleType, setTitleType] = useState<'meme' | 'frase'>('meme');
+    // Fix: Add state for meme category
+    const [memeCategory, setMemeCategory] = useState('pareja');
     const [designSettings, setDesignSettings] = useState<GlobalDesignSettings>({
         showHeader: true,
         profileName: 'Blogfun',
@@ -389,6 +433,12 @@ const App: React.FC = () => {
         setError(null);
     };
 
+    // Fix: Add handler for category change
+    const handleCategoryChange = (category: string) => {
+        if (memeCategory === category || isLoading) return;
+        setMemeCategory(category);
+    };
+
     const handleGenerate = useCallback(async () => {
         if (!apiKey) {
             setError('Por favor, configura tu API Key de Gemini para generar contenido.');
@@ -403,7 +453,8 @@ const App: React.FC = () => {
         try {
             if (titleType === 'meme') {
                 const memePromises = uploadedImages.map(async (image) => {
-                    const titles = await generateTitles(image.file, apiKey);
+// Fix: Pass the meme category to generateTitles
+                    const titles = await generateTitles(image.file, apiKey, memeCategory);
                     const firstTitle = Object.values(titles)[0] || '';
                     return {
                         id: image.id,
@@ -434,7 +485,7 @@ const App: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [uploadedImages, titleType, apiKey]);
+    }, [uploadedImages, titleType, apiKey, memeCategory]);
     
     const handleMemeTextChange = (memeId: string, newText: string) => {
          setGeneratedMemes(prevMemes =>
@@ -489,12 +540,8 @@ const App: React.FC = () => {
                 ? await createPhraseImage(creationData)
                 : await createMemeImage(creationData);
 
-            const link = document.createElement('a');
-            link.href = dataUrl;
-            link.download = `${titleType}-${meme.id}.jpg`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            window.open(dataUrl, '_blank');
+            
         } catch (downloadError) {
             console.error("Failed to create and download image:", downloadError);
             setError("No se pudo crear la imagen para descargar.");
@@ -510,6 +557,7 @@ const App: React.FC = () => {
         setGeneratedMemes([]);
         setError(null);
         setIsLoading(false);
+        setMemeCategory('pareja');
         setDesignSettings({
             showHeader: true,
             profileName: 'Blogfun',
@@ -533,6 +581,8 @@ const App: React.FC = () => {
         if (titleType === 'meme' && hasImages) return 'preview';
         return 'upload';
     }, [isLoading, hasMemes, hasImages, titleType]);
+    
+    const showCategorySelector = titleType === 'meme' && (currentView === 'upload' || currentView === 'preview');
 
     return (
         <div className="min-h-screen bg-gray-900 text-white font-sans p-4 sm:p-6 lg:p-8">
@@ -555,6 +605,15 @@ const App: React.FC = () => {
                             <button onClick={() => handleTitleTypeChange('frase')} className={`px-5 py-2 text-base font-semibold rounded-lg transition-colors ${titleType === 'frase' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-300 hover:bg-gray-700'}`}>✍️ Modo Frase</button>
                         </div>
                     </div>
+                    
+                    {/* Fix: Render MemeCategorySelector */}
+                    {showCategorySelector && (
+                        <MemeCategorySelector 
+                            selectedCategory={memeCategory}
+                            onCategoryChange={handleCategoryChange}
+                            disabled={isLoading}
+                        />
+                    )}
 
                     {titleType === 'meme' && currentView === 'upload' && <ImageUploader onFilesSelected={handleFilesSelected} disabled={isLoading} />}
                     

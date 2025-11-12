@@ -5,7 +5,24 @@ import { createMemeImage, createPhraseImage } from './services/imageService.js';
 
 const DEFAULT_AVATAR_URL = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgdHJhbnNmb3JtPSJyb3RhdGUoMTAgNTAgNTApIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iI0ZGRiIgc3Ryb2tlPSIjREREIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNIDY1LDQwIEMgNjgsMzUgNzIsMzUgNzUsNDAiIHN0cm9rZT0iYmxhY2siIHN0cm9rZS13aWR0aD0iNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiAvPjxwYXRoIGQ9Ik0gMzAsNjUgUSA1MCw4NSA3MCw2NSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSI2IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIC8+PGNpcmNsZSBjeD0iMzUiIGN5PSI0MCIgcj0iNSIgZmlsbD0iYmxhY2siIC8+PC9nPjwvc3ZnPg==';
 const WHITE_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
-const EMOJIS = { picara: '💋', sarcastica: '😏', dramatica: '😭', relaciones: '💔', chisme: '😏', humor: '😅', reflexion: '😌', sarcasmo: '😤',};
+const EMOJIS = {
+    // Pareja
+    sarcasmo: '😏',
+    drama: '😭',
+    indirecta: '🤫',
+    // Familia
+    nostalgia: '😌',
+    ternura: '❤️',
+    // Trabajo
+    sarcasmoTrabajo: '😤',
+    estres: '😫',
+    humorTrabajo: '😂',
+    // Frases (some are shared)
+    relaciones: '💔',
+    chisme: '😏',
+    humor: '😅',
+    reflexion: '😌',
+};
 
 // --- STATE MANAGEMENT ---
 const state = {
@@ -13,6 +30,7 @@ const state = {
     uploadedImages: [],
     generatedMemes: [],
     titleType: 'meme',
+    memeCategory: 'pareja',
     designSettings: {
         showHeader: true,
         profileName: 'Blogfun',
@@ -36,6 +54,7 @@ const DOMElements = {
     loadingContainer: document.getElementById('loading-container'),
     loadingText: document.getElementById('loading-text'),
     footerButtons: document.getElementById('footer-buttons'),
+    memeCategoryContainer: document.getElementById('meme-category-container'),
     mainContent: document.getElementById('main-content'),
 };
 
@@ -70,6 +89,32 @@ const getUploaderHTML = () => `
             <input id="file-upload" type="file" multiple accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
         </label>
     </div>`;
+
+const getMemeCategorySelectorHTML = () => {
+    const categories = [
+        { id: 'pareja', label: 'Amor y Pareja', icon: '💑' },
+        { id: 'familia', label: 'Familia', icon: '👩‍👧' },
+        { id: 'trabajo', label: 'Trabajo y Vida', icon: '💼' }
+    ];
+    return `
+    <div class="flex flex-col items-center justify-center mb-8 gap-3">
+        <h3 class="text-lg font-semibold text-gray-300">Elige el tema de tu meme:</h3>
+        <div class="flex flex-wrap justify-center gap-3">
+            ${categories.map(cat => `
+                <button
+                    data-category="${cat.id}"
+                    class="meme-category-btn px-4 py-2 text-base font-semibold rounded-lg transition-colors border-2 ${
+                        state.memeCategory === cat.id
+                            ? 'bg-teal-500 border-teal-400 text-white shadow-lg'
+                            : 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:border-gray-500'
+                    }">
+                    ${cat.icon} ${cat.label}
+                </button>
+            `).join('')}
+        </div>
+    </div>
+    `;
+};
 
 const getPreviewHTML = () => `<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
     ${state.uploadedImages.map(image => `
@@ -205,6 +250,13 @@ const render = () => {
     // Main Content Views
     const currentView = state.isLoading ? 'loading' : (state.generatedMemes.length > 0 ? 'results' : (state.uploadedImages.length > 0 && state.titleType === 'meme' ? 'preview' : 'upload'));
     
+    // Category Selector
+    const showCategorySelector = state.titleType === 'meme' && state.generatedMemes.length === 0 && !state.isLoading;
+    DOMElements.memeCategoryContainer.classList.toggle('hidden', !showCategorySelector);
+    if (showCategorySelector) {
+        DOMElements.memeCategoryContainer.innerHTML = getMemeCategorySelectorHTML();
+    }
+    
     DOMElements.loadingContainer.classList.toggle('hidden', currentView !== 'loading');
     DOMElements.uploaderContainer.classList.toggle('hidden', currentView !== 'upload' || state.titleType !== 'meme');
     DOMElements.previewContainer.classList.toggle('hidden', currentView !== 'preview');
@@ -231,6 +283,12 @@ const render = () => {
 
 
 // --- HANDLER FUNCTIONS ---
+const handleCategoryChange = (category) => {
+    if (state.memeCategory === category || state.isLoading) return;
+    state.memeCategory = category;
+    render();
+};
+
 const handleModeChange = (type) => {
     if (state.titleType === type || state.isLoading) return;
     handleReset();
@@ -274,7 +332,7 @@ const handleGenerate = async () => {
     try {
         if (state.titleType === 'meme') {
             const memePromises = state.uploadedImages.map(async (image) => {
-                const titles = await generateTitles(image.file, state.apiKey);
+                const titles = await generateTitles(image.file, state.apiKey, state.memeCategory);
                 return { id: image.id, imageUrl: image.previewUrl, titles, editText: Object.values(titles)[0] || '' };
             });
             state.generatedMemes = await Promise.all(memePromises);
@@ -305,6 +363,7 @@ const handleReset = () => {
     state.generatedMemes = [];
     state.error = null;
     state.isLoading = false;
+    state.memeCategory = 'pareja';
     state.designSettings = {
         showHeader: true,
         profileName: 'Blogfun',
@@ -358,12 +417,8 @@ const handleDownload = async (button) => {
             ? await createPhraseImage(creationData)
             : await createMemeImage(creationData);
         
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = `${state.titleType}-${meme.id}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        window.open(dataUrl, '_blank');
+
     } catch (downloadError) {
         console.error("Failed to create and download image:", downloadError);
         state.error = "No se pudo crear la imagen para descargar.";
@@ -491,6 +546,14 @@ const initialize = () => {
     DOMElements.footerButtons.addEventListener('click', (e) => {
         if (e.target.id === 'reset-btn') handleReset();
         if (e.target.id === 'generate-btn') handleGenerate();
+    });
+
+    // Delegated listener for category buttons
+    DOMElements.memeCategoryContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.meme-category-btn');
+        if (btn) {
+            handleCategoryChange(btn.dataset.category);
+        }
     });
 
     // Delegated listeners for the results container, which is often re-rendered
