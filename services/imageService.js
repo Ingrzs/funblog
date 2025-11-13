@@ -1,4 +1,3 @@
-
 /**
  * Carga una imagen desde una URL y devuelve una promesa que se resuelve con el elemento de imagen.
  * @param {string} src La URL de la imagen a cargar.
@@ -355,15 +354,13 @@ export const createTweetImage = async (tweetData) => {
         const ctx = canvas.getContext('2d');
         if (!ctx) throw new Error('Could not get canvas context.');
         
-        const BG_COLOR = '#16202A';
+        const SCALE_FACTOR = 2; // Para mayor resolución
         const CARD_COLOR = '#FFFFFF';
         const NAME_COLOR = '#0F1419';
         const HANDLE_COLOR = '#536471';
         const TEXT_COLOR = '#0F1419';
 
         const CARD_WIDTH = 550;
-        const HORIZONTAL_PADDING = 30;
-        const VERTICAL_PADDING = 30;
 
         // Card internal padding
         const PADDING = 16;
@@ -387,19 +384,17 @@ export const createTweetImage = async (tweetData) => {
 
         const cardHeight = PADDING + headerBlockHeight + textHeight + PADDING;
         
-        canvas.width = CARD_WIDTH + HORIZONTAL_PADDING * 2;
-        canvas.height = cardHeight + VERTICAL_PADDING * 2;
+        canvas.width = CARD_WIDTH * SCALE_FACTOR;
+        canvas.height = cardHeight * SCALE_FACTOR;
+        ctx.scale(SCALE_FACTOR, SCALE_FACTOR);
 
         // --- Drawing ---
-        ctx.fillStyle = BG_COLOR;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Draw card
+        // Dibuja un fondo blanco sólido para evitar problemas de transparencia ("bordes negros") al descargar.
         ctx.fillStyle = CARD_COLOR;
-        drawRoundRect(ctx, HORIZONTAL_PADDING, VERTICAL_PADDING, CARD_WIDTH, cardHeight, 16);
+        ctx.fillRect(0, 0, CARD_WIDTH, cardHeight);
         
-        const cardX = HORIZONTAL_PADDING;
-        const cardY = VERTICAL_PADDING;
+        const cardX = 0;
+        const cardY = 0;
 
         let textY = cardY + PADDING;
         ctx.textBaseline = 'top';

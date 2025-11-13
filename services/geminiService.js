@@ -1,8 +1,3 @@
-
-
-
-
-
 import { GoogleGenAI } from "@google/genai";
 
 const fileToBase64 = (file) => {
@@ -20,64 +15,85 @@ const fileToBase64 = (file) => {
   });
 };
 
-const PROMPT_PAREJA = `
-Analiza la imagen y genera 3 frases tipo meme virales que encajen visualmente con ella.
-El tono debe ser sarcástico, irónico, emocional o con doble sentido sobre relaciones de pareja, celos, infidelidad, deseo, o indirectas románticas.
-Las frases deben sonar naturales, como si una mujer hablara en tono de chisme o reflexión con sarcasmo.
-Evita palabras explícitas; usa sustituciones o censura creativa (ejemplo: “puchaina”, “f30”, “bby”, “solté la pantufla”).
-Cada frase debe tener entre 1 y 2 líneas, ser clara, entendible y visualmente fuerte.
-
-Ejemplo de estilo:
-- Yo: viendo como mi ex jura que ya cambió y sigue con la misma.
-- Yo: después de besarme la puchaina y decir que no siente nada.
-- Yo: pensando que era el amor de mi vida y solo era mi trauma favorito.
-
-Dame 3 versiones diferentes del texto, cada una con un tono distinto, siguiendo este formato EXACTO:
-😏 Sarcasmo: [Texto aquí]
-😭 Drama: [Texto aquí]
-🤫 Indirecta: [Texto aquí]
-`;
-
-const PROMPT_FAMILIA = `
-Analiza la imagen y crea 3 frases tipo meme o reflexión corta con tono emocional, sarcástico o nostálgico sobre familia, madres, hijos, hermanos o momentos de la vida adulta.
-Las frases deben conectar con emociones reales, con toques de humor o ternura, como si hablara una persona con empatía o cansancio de la vida diaria.
-Usa un lenguaje cotidiano, realista y cálido, pero con ese toque irónico que genera identificación.
-
-Ejemplo de estilo:
-- Tener una mamá que aún te cuide aunque ya seas adulta, eso no tiene precio.
-- Yo: diciendo que no voy a volver, mientras mi mamá ya me tiene la sopa servida.
-- A veces solo quiero regresar a la cocina de mi abuela y no salir nunca más.
-
-Dame 3 versiones diferentes del texto, cada una con un tono distinto, siguiendo este formato EXACTO:
-😌 Nostalgia: [Texto aquí]
-😅 Humor: [Texto aquí]
-❤️ Ternura: [Texto aquí]
-`;
-
-const PROMPT_TRABAJO = `
-Analiza la imagen y crea 3 frases tipo meme con humor, sarcasmo o ironía sobre trabajo, escuela, responsabilidades o la vida adulta en general.
-Deben sonar como pensamientos internos o quejas graciosas que la gente comparta porque se identifica.
-Puedes usar expresiones coloquiales o exageradas, pero evita groserías directas.
-
-Ejemplo de estilo:
-- Yo: sobreviviendo otro día laboral sin llorar (por fuera).
-- A veces solo quiero renunciar... pero no tengo ni para renunciar.
-- Me metí a este trabajo por voluntad propia, y ahora no sé qué voluntad fue esa.
-
-Dame 3 versiones diferentes del texto, cada una con un tono distinto, siguiendo este formato EXACTO:
-😤 Sarcasmo: [Texto aquí]
-😫 Estrés: [Texto aquí]
-😂 Humor: [Texto aquí]
-`;
-
 const getMemePrompt = (category) => {
-    switch (category) {
-        case 'pareja': return PROMPT_PAREJA;
-        case 'familia': return PROMPT_FAMILIA;
-        case 'trabajo': return PROMPT_TRABAJO;
-        default: return PROMPT_PAREJA;
-    }
-}
+    const categoryPrompts = {
+        pareja: `
+CATEGORÍA: PAREJA / NOVIAZGO / INFIDELIDAD
+ENTREGA 3 TEXTOS, UNO POR CADA TONO:
+A) Pícara / morbosa (doble sentido leve, censura creativa).
+B) Sarcástica / indirecta / chisme.
+C) Dramática / emocional / tóxica.
+
+FORMATO DE SALIDA (usa estas claves exactas):
+sarcasmo: [Texto aquí]
+drama: [Texto aquí]
+indirecta: [Texto aquí]
+        `,
+        familia: `
+CATEGORÍA: FAMILIA
+ENTREGA 3 TEXTOS, UNO POR CADA TONO:
+A) Humor picoso suave / doble sentido familiar.
+B) Sarcasmo familiar / problemas típicos / indirectas.
+C) Empático / nostálgico / emocional (sin cursilería extrema).
+
+FORMATO DE SALIDA (usa estas claves exactas):
+nostalgia: [Texto aquí]
+humor: [Texto aquí]
+ternura: [Texto aquí]
+        `,
+        trabajo: `
+CATEGORÍA: TRABAJO / ESCUELA / VIDA ADULTA
+ENTREGA 3 TEXTOS, UNO POR CADA TONO:
+A) Pícara laboral o doble sentido “de oficina”.
+B) Sarcástica / estrés laboral / queja irónica.
+C) Dramática / cansancio / vida adulta difícil.
+
+FORMATO DE SALIDA (usa estas claves exactas):
+sarcasmoTrabajo: [Texto aquí]
+estres: [Texto aquí]
+humorTrabajo: [Texto aquí]
+        `
+    };
+
+    const selectedCategoryPrompt = categoryPrompts[category] || categoryPrompts['pareja'];
+
+    return `
+Quiero que analices la imagen de forma profunda antes de generar textos. 
+Sigue este proceso de interpretación:
+
+1. ANALIZA EMOCIONES:
+   - Expresión facial: enojo, tristeza, picardía, sorpresa, sospecha.
+   - Mirada: hacia dónde ve, qué transmite.
+   - Postura corporal: tensión, altanería, inseguridad, coquetería.
+   - Energía general de la escena: dramática, cómica, incómoda, sensual, cotidiana.
+
+2. ANALIZA CONTEXTO VISUAL:
+   - Escenario: casa, oficina, calle, cuarto, exterior.
+   - Elementos en manos u objetos visibles (celular, comida, espejo, cama).
+   - Iluminación: realista, triste, romántica, dramática.
+   - Posibles implicaciones (lo que *parece* que está pasando).
+
+3. INTERPRETACIÓN VIRAL:
+   - Identifica la “puerta” al morbo, al chisme, al sarcasmo o al drama.
+   - Piensa qué historia insinuaría esta imagen en una conversación de amigas.
+   - Extrae el punto que podría generar comentarios y debate.
+   - Si la imagen da para doble sentido, úsalo (censurado).
+   - Si da para sospecha, celos, infidelidad, indirectas, úsalo.
+
+Después de este análisis, genera 3 textos virales estilo Blog Fun para la siguiente categoría.
+Cada texto debe ser de 1–2 líneas máximo. 
+Los textos NO describen la imagen; la transforman en un meme potente.
+
+${selectedCategoryPrompt}
+
+REQUISITOS:
+- Mantén tono femenino mexicano un 80% un 20% tono masculino mexicano, irónico, sarcastico y con humor ácido.
+- Censura palabras fuertes así: p4rte, puch4ina, tóxic0, od10,4rm4 etc.
+- Cada texto debe sentirse como un meme que genera debate, risa o morbo.
+- No describas la imagen: interpreta lo que *emocionalmente está insinuando*.
+- No des explicaciones; solo dame los textos finales.
+    `;
+};
 
 const getPhrasePrompt = (count, length) => {
     const lengthInstructions = {
@@ -112,7 +128,7 @@ const getPhrasePrompt = (count, length) => {
 *   “A veces quisiera ser millonaria para ver si mis problemas de verdad son por dinero.”
 *   “Me anda buscando el SAT y también el que juró que no podía vivir sin mí.”
 *   “No me quemé, pero qué bien alumbré.”
-*   “Te perdono el casi algo, pero devuélveme mis ganas de volver a intentar.”
+*   “Te perdono el casi algo, pero devélveme mis ganas de volver a intentar.”
 *   “Mi contacto de emergencia es mi mamá para que le diga a mi jefe que no voy a ir a trabajar.”
 
 **Formato de Salida Obligatorio:**
@@ -134,17 +150,17 @@ const parseMemeTitles = (text) => {
 
   lines.forEach(line => {
       // Pareja
-      if (line.startsWith('😏 Sarcasmo:')) { titles.sarcasmo = line.replace('😏 Sarcasmo:', '').trim(); }
-      else if (line.startsWith('😭 Drama:')) { titles.drama = line.replace('😭 Drama:', '').trim(); }
-      else if (line.startsWith('🤫 Indirecta:')) { titles.indirecta = line.replace('🤫 Indirecta:', '').trim(); }
+      if (line.startsWith('sarcasmo:')) { titles.sarcasmo = line.replace('sarcasmo:', '').trim(); }
+      else if (line.startsWith('drama:')) { titles.drama = line.replace('drama:', '').trim(); }
+      else if (line.startsWith('indirecta:')) { titles.indirecta = line.replace('indirecta:', '').trim(); }
       // Familia
-      else if (line.startsWith('😌 Nostalgia:')) { titles.nostalgia = line.replace('😌 Nostalgia:', '').trim(); }
-      else if (line.startsWith('😅 Humor:')) { titles.humor = line.replace('😅 Humor:', '').trim(); }
-      else if (line.startsWith('❤️ Ternura:')) { titles.ternura = line.replace('❤️ Ternura:', '').trim(); }
+      else if (line.startsWith('nostalgia:')) { titles.nostalgia = line.replace('nostalgia:', '').trim(); }
+      else if (line.startsWith('humor:')) { titles.humor = line.replace('humor:', '').trim(); }
+      else if (line.startsWith('ternura:')) { titles.ternura = line.replace('ternura:', '').trim(); }
       // Trabajo
-      else if (line.startsWith('😤 Sarcasmo:')) { titles.sarcasmoTrabajo = line.replace('😤 Sarcasmo:', '').trim(); }
-      else if (line.startsWith('😫 Estrés:')) { titles.estres = line.replace('😫 Estrés:', '').trim(); }
-      else if (line.startsWith('😂 Humor:')) { titles.humorTrabajo = line.replace('😂 Humor:', '').trim(); }
+      else if (line.startsWith('sarcasmoTrabajo:')) { titles.sarcasmoTrabajo = line.replace('sarcasmoTrabajo:', '').trim(); }
+      else if (line.startsWith('estres:')) { titles.estres = line.replace('estres:', '').trim(); }
+      else if (line.startsWith('humorTrabajo:')) { titles.humorTrabajo = line.replace('humorTrabajo:', '').trim(); }
   });
 
   return titles;
@@ -193,7 +209,24 @@ export const generateTitles = async (imageFile, apiKey, category) => {
       contents: [{ parts: [imagePart, textPart] }],
     });
     
-    const parsed = parseMemeTitles(response.text);
+    let parsed = parseMemeTitles(response.text);
+    if (Object.keys(parsed).length === 0) {
+        // A veces la IA puede responder con el formato `A) ...`, lo intentamos parsear
+        const lines = response.text.split('\n');
+        const fallbackTitles = {
+            pareja: ['sarcasmo', 'drama', 'indirecta'],
+            familia: ['nostalgia', 'humor', 'ternura'],
+            trabajo: ['sarcasmoTrabajo', 'estres', 'humorTrabajo'],
+        };
+        const keys = fallbackTitles[category] || fallbackTitles.pareja;
+        const texts = lines.map(l => l.replace(/^[A-C]\)\s*/, '').trim()).filter(Boolean);
+        if (texts.length >= keys.length) {
+            keys.forEach((key, index) => {
+                parsed[key] = texts[index];
+            });
+        }
+    }
+    
     if (Object.keys(parsed).length === 0) {
         throw new Error("La respuesta de la IA no tuvo el formato esperado.");
     }
