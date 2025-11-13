@@ -1,10 +1,27 @@
+
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type { UploadedImage, GeneratedMeme, Watermark, MemeCreationData, GlobalDesignSettings } from './types';
 import { generateTitles, generatePhrases } from './services/geminiService';
-import { createMemeImage, createPhraseImage } from './services/imageService';
+import { createMemeImage, createPhraseImage, createTweetImage } from './services/imageService';
 
 const DEFAULT_AVATAR_URL = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgdHJhbnNmb3JtPSJyb3RhdGUoMTAgNTAgNTApIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iI0ZGRiIgc3Ryb2tlPSIjREREIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNIDY1LDQwIEMgNjgsMzUgNzIsMzUgNzUsNDAiIHN0cm9rZT0iYmxhY2siIHN0cm9rZS13aWR0aD0iNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiAvPjxwYXRoIGQ9Ik0gMzAsNjUgUSA1MCw4NSA3MCw2NSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSI2IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIC8+PGNpcmNsZSBjeD0iMzUiIGN5PSI0MCIgcj0iNSIgZmlsbD0iYmxhY2siIC8+PC9nPjwvc3ZnPg==';
 const WHITE_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
+const DESIGN_SETTINGS_KEY = 'viral-generator-design-settings';
+
+const fileToDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (error) => reject(error);
+        reader.readAsDataURL(file);
+    });
+};
+
+const cleanText = (text: string): string => {
+    if (!text) return '';
+    // Elimina comillas dobles, rizadas de apertura y cierre del principio y del final
+    return text.trim().replace(/^["“]|["”]$/g, '');
+};
 
 const ApiKeyManager: React.FC<{
     apiKey: string | null;
@@ -137,7 +154,7 @@ const MemeCategorySelector: React.FC<{
                                 : 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:border-gray-500'
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                        {cat.icon} {cat.label}
+                        {cat.icon} ${cat.label}
                     </button>
                 ))}
             </div>
@@ -177,6 +194,8 @@ const EMOJIS: Record<string, string> = {
     chisme: '😏',
     humor: '😅',
     reflexion: '😌',
+    sarcasmoFrase: '😤',
+    tweet: '🐦'
 };
 
 const MemeEditorCard: React.FC<{
@@ -184,37 +203,83 @@ const MemeEditorCard: React.FC<{
     designSettings: GlobalDesignSettings;
     onMemeTextChange: (id: string, newText: string) => void;
     onDownload: (meme: GeneratedMeme) => void;
-    isPhraseMode: boolean;
-}> = ({ meme, designSettings, onMemeTextChange, onDownload, isPhraseMode }) => {
-    const { showHeader, profileName, profileHandle, profileAvatarUrl, watermark } = designSettings;
+    titleType: 'meme' | 'frase' | 'tweet';
+}> = ({ meme, designSettings, onMemeTextChange, onDownload, titleType }) => {
+    const { showHeader, profileName, profileHandle, profileAvatarUrl, watermark, textAlign } = designSettings;
 
-    const mainContentBg = isPhraseMode ? 'bg-white' : 'bg-gray-100';
+    const isPhraseMode = titleType === 'frase';
+    const isTweetMode = titleType === 'tweet';
+
+    const mainContentBg = isPhraseMode || isTweetMode ? 'bg-white' : 'bg-gray-100';
     const mainTextColor = 'text-gray-900';
+
+    let mainContainerClasses = `p-4 ${mainContentBg} ${mainTextColor} rounded-t-lg border-b border-gray-200 relative overflow-hidden`;
+    if (isPhraseMode) {
+        mainContainerClasses += ' aspect-square flex flex-col';
+    }
+
+    const headerVisible = (showHeader && (isPhraseMode || isTweetMode)) || (!isTweetMode && showHeader);
+
+    const header = headerVisible && (
+        <div className={`flex gap-3 ${isTweetMode ? 'mb-3' : ''}`}>
+            <div className="w-12 h-12 flex-shrink-0">
+                <img src={profileAvatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+            </div>
+            <div className="flex-1" style={isTweetMode ? { paddingTop: '2px' } : {}}>
+                <p className="font-bold text-gray-800" style={isTweetMode ? { fontSize: '16px', lineHeight: '1.2' } : { fontSize: '1rem' }}>{profileName}</p>
+                <p className="text-gray-500" style={isTweetMode ? { fontSize: '15px', lineHeight: '1.2' } : { fontSize: '0.875rem' }}>{profileHandle}</p>
+            </div>
+        </div>
+    );
+
+    const contentLayoutClasses = `w-full relative ${isPhraseMode ? 'flex-grow flex items-center justify-center' : ''} ${!isTweetMode ? 'mt-3' : ''}`;
+
+    let textEditor;
+    if (isTweetMode) {
+        textEditor = (
+            <div
+                contentEditable={true}
+                suppressContentEditableWarning={true}
+                onInput={(e) => onMemeTextChange(meme.id, e.currentTarget.textContent || '')}
+                className="edit-text-area w-full bg-transparent p-0 border-0 focus:ring-0 whitespace-pre-wrap break-words"
+                style={{ fontSize: '23px', lineHeight: '30px', textAlign: 'left' }}
+                data-placeholder="Escribe tu texto aquí..."
+                dangerouslySetInnerHTML={{ __html: meme.editText }}
+            />
+        );
+    } else if (isPhraseMode) {
+        textEditor = (
+            <div
+                contentEditable={true}
+                suppressContentEditableWarning={true}
+                onInput={(e) => onMemeTextChange(meme.id, e.currentTarget.textContent || '')}
+                className="edit-text-area w-full bg-transparent p-0 border-0 focus:ring-0 whitespace-pre-wrap break-words"
+                style={{ fontSize: '28px', lineHeight: '40px', textAlign }}
+                data-placeholder="Escribe tu texto aquí..."
+                dangerouslySetInnerHTML={{ __html: meme.editText }}
+            />
+        );
+    } else { // Meme mode
+        textEditor = (
+            <AutoGrowTextarea
+                value={meme.editText}
+                onChange={(e) => onMemeTextChange(meme.id, e.target.value)}
+                className={`edit-text-area w-full bg-transparent p-0 border-0 focus:ring-0 resize-none text-lg ${mainTextColor}`}
+                placeholder="Escribe tu texto aquí..."
+                rows={1}
+                style={{ textAlign }}
+            />
+        );
+    }
+
 
     return (
         <div className="bg-gray-800 rounded-lg shadow-lg shadow-black/30 flex flex-col gap-4">
-            {/* El editor visual del meme/frase */}
-            <div className={`p-4 ${mainContentBg} ${mainTextColor} rounded-t-lg border-b border-gray-200 relative overflow-hidden`}>
-                {showHeader && (
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12">
-                            <img src={profileAvatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover" />
-                        </div>
-                        <div className="flex-1">
-                            <p className="w-full bg-transparent font-bold text-gray-800 border-0 p-0 focus:ring-0">{profileName}</p>
-                            <p className="w-full bg-transparent text-sm text-gray-500 border-0 p-0 focus:ring-0">{profileHandle}</p>
-                        </div>
-                    </div>
-                )}
-                <div className={`mt-3 w-full relative ${isPhraseMode ? 'aspect-square flex items-center justify-center' : ''}`}>
-                    <AutoGrowTextarea
-                        value={meme.editText}
-                        onChange={(e) => onMemeTextChange(meme.id, e.target.value)}
-                        className={`w-full bg-transparent p-0 border-0 focus:ring-0 resize-none ${isPhraseMode ? 'text-2xl font-bold text-center' : `text-lg ${mainTextColor}`}`}
-                        placeholder="Escribe tu texto aquí..."
-                        rows={1}
-                    />
-                    {!isPhraseMode && (
+            <div className={mainContainerClasses}>
+                {header}
+                <div className={contentLayoutClasses}>
+                    {textEditor}
+                    {!isPhraseMode && !isTweetMode && (
                         <img src={meme.imageUrl} alt="Meme" className="w-full h-auto rounded-lg object-cover mt-3" />
                     )}
                     {watermark.type !== 'none' && (
@@ -239,7 +304,6 @@ const MemeEditorCard: React.FC<{
                 </div>
             </div>
 
-            {/* Sugerencias y controles */}
             <div className="p-4 flex flex-col gap-3">
                 <h3 className="text-sm font-bold text-indigo-300 uppercase tracking-wider">Sugerencias de la IA</h3>
                 <div className="flex flex-col gap-2">
@@ -262,10 +326,12 @@ const MemeEditorCard: React.FC<{
 
 const GlobalDesignControls: React.FC<{
     settings: GlobalDesignSettings;
+    titleType: 'meme' | 'frase' | 'tweet';
     onSettingsChange: (updates: Partial<GlobalDesignSettings>) => void;
     onWatermarkSettingsChange: (updates: Partial<Watermark>) => void;
     onWatermarkImageChange: (file: File) => void;
-}> = ({ settings, onSettingsChange, onWatermarkSettingsChange, onWatermarkImageChange }) => {
+    onError: (message: string) => void;
+}> = ({ settings, titleType, onSettingsChange, onWatermarkSettingsChange, onWatermarkImageChange, onError }) => {
     
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const watermarkImageInputRef = useRef<HTMLInputElement>(null);
@@ -274,13 +340,18 @@ const GlobalDesignControls: React.FC<{
     const isDragging = useRef(false);
     const dragOffset = useRef({ x: 0, y: 0 });
 
-    const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            const newAvatarUrl = URL.createObjectURL(e.target.files[0]);
-            if (settings.profileAvatarUrl !== DEFAULT_AVATAR_URL) {
-                URL.revokeObjectURL(settings.profileAvatarUrl);
+            try {
+                const dataUrl = await fileToDataURL(e.target.files[0]);
+                if (settings.profileAvatarUrl && settings.profileAvatarUrl.startsWith('blob:')) {
+                    URL.revokeObjectURL(settings.profileAvatarUrl);
+                }
+                onSettingsChange({ profileAvatarUrl: dataUrl });
+            } catch (err) {
+                console.error("Error processing avatar image:", err);
+                onError("No se pudo cargar la imagen de perfil.");
             }
-            onSettingsChange({ profileAvatarUrl: newAvatarUrl });
         }
     };
 
@@ -319,6 +390,8 @@ const GlobalDesignControls: React.FC<{
         };
     }, [handleMouseMove, handleMouseUp]);
 
+
+    const isTextMode = titleType === 'frase' || titleType === 'tweet';
 
     return (
         <div className="p-6 bg-gray-800 rounded-xl shadow-lg mb-8 border border-gray-700">
@@ -384,14 +457,16 @@ const App: React.FC = () => {
     const [apiKey, setApiKey] = useState<string | null>(null);
     const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
     const [generatedMemes, setGeneratedMemes] = useState<GeneratedMeme[]>([]);
-    const [titleType, setTitleType] = useState<'meme' | 'frase'>('meme');
-    // Fix: Add state for meme category
+    const [titleType, setTitleType] = useState<'meme' | 'frase' | 'tweet'>('meme');
     const [memeCategory, setMemeCategory] = useState('pareja');
+    const [phraseCount, setPhraseCount] = useState(10);
+    const [phraseLength, setPhraseLength] = useState<'muy-corto' | 'corto' | 'largo'>('corto');
     const [designSettings, setDesignSettings] = useState<GlobalDesignSettings>({
         showHeader: true,
         profileName: 'Blogfun',
         profileHandle: '@blogfun',
         profileAvatarUrl: DEFAULT_AVATAR_URL,
+        textAlign: 'left',
         watermark: {
             type: 'none',
             text: 'Tu Marca de Agua',
@@ -410,7 +485,37 @@ const App: React.FC = () => {
         if (savedKey) {
             setApiKey(savedKey);
         }
+        try {
+            const savedSettings = localStorage.getItem(DESIGN_SETTINGS_KEY);
+            if (savedSettings) {
+                const parsed = JSON.parse(savedSettings);
+                setDesignSettings(prev => ({
+                    ...prev,
+                    profileName: parsed.profileName || 'Blogfun',
+                    profileHandle: parsed.profileHandle || '@blogfun',
+                    profileAvatarUrl: parsed.profileAvatarUrl || DEFAULT_AVATAR_URL,
+                    showHeader: typeof parsed.showHeader === 'boolean' ? parsed.showHeader : true,
+                }));
+            }
+        } catch (e) {
+            console.error("Failed to load design settings:", e);
+        }
     }, []);
+
+    useEffect(() => {
+        try {
+            const settingsToSave = {
+                profileName: designSettings.profileName,
+                profileHandle: designSettings.profileHandle,
+                profileAvatarUrl: designSettings.profileAvatarUrl,
+                showHeader: designSettings.showHeader,
+            };
+            localStorage.setItem(DESIGN_SETTINGS_KEY, JSON.stringify(settingsToSave));
+        } catch (e) {
+            console.error("Failed to save design settings:", e);
+        }
+    }, [designSettings.profileName, designSettings.profileHandle, designSettings.profileAvatarUrl, designSettings.showHeader]);
+
 
     const handleApiKeyChange = (key: string | null) => {
         if (key) {
@@ -433,10 +538,17 @@ const App: React.FC = () => {
         setError(null);
     };
 
-    // Fix: Add handler for category change
     const handleCategoryChange = (category: string) => {
         if (memeCategory === category || isLoading) return;
         setMemeCategory(category);
+    };
+
+    const cleanAllTitles = (titles: Record<string, string>): Record<string, string> => {
+        const cleaned: Record<string, string> = {};
+        for (const key in titles) {
+            cleaned[key] = cleanText(titles[key]);
+        }
+        return cleaned;
     };
 
     const handleGenerate = useCallback(async () => {
@@ -453,27 +565,17 @@ const App: React.FC = () => {
         try {
             if (titleType === 'meme') {
                 const memePromises = uploadedImages.map(async (image) => {
-// Fix: Pass the meme category to generateTitles
                     const titles = await generateTitles(image.file, apiKey, memeCategory);
-                    const firstTitle = Object.values(titles)[0] || '';
-                    return {
-                        id: image.id,
-                        imageUrl: image.previewUrl,
-                        titles: titles,
-                        editText: firstTitle,
-                    };
+                    const cleanedTitles = cleanAllTitles(titles);
+                    return { id: image.id, imageUrl: image.previewUrl, titles: cleanedTitles, editText: Object.values(cleanedTitles)[0] || '' };
                 });
-                const results = await Promise.all(memePromises);
-                setGeneratedMemes(results);
-            } else { // titleType === 'frase'
-                const phrases = await generatePhrases(apiKey);
-                const phraseResults: GeneratedMeme[] = phrases.map((p, index) => ({
-                    id: `phrase-${Date.now()}-${index}`,
-                    imageUrl: WHITE_PIXEL, // Usamos un pixel blanco como placeholder
-                    titles: p,
-                    editText: Object.values(p)[0] || '',
-                }));
-                setGeneratedMemes(phraseResults);
+                setGeneratedMemes(await Promise.all(memePromises));
+            } else if (titleType === 'frase' || titleType === 'tweet') {
+                const results = await generatePhrases(apiKey, phraseCount, phraseLength);
+                const cleanedResults = results.map(p => cleanAllTitles(p));
+                setGeneratedMemes(cleanedResults.map((p, index) => ({
+                    id: `${titleType}-${Date.now()}-${index}`, imageUrl: WHITE_PIXEL, titles: p, editText: Object.values(p)[0] || '',
+                })));
             }
         } catch (err) {
             setError('Ocurrió un error durante la generación. Por favor, inténtalo de nuevo.');
@@ -485,7 +587,7 @@ const App: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [uploadedImages, titleType, apiKey, memeCategory]);
+    }, [uploadedImages, titleType, apiKey, memeCategory, phraseCount, phraseLength]);
     
     const handleMemeTextChange = (memeId: string, newText: string) => {
          setGeneratedMemes(prevMemes =>
@@ -536,11 +638,22 @@ const App: React.FC = () => {
                 design: designSettings,
             };
 
-            const dataUrl = titleType === 'frase' 
-                ? await createPhraseImage(creationData)
-                : await createMemeImage(creationData);
+            let dataUrl: string;
+            if (titleType === 'frase') {
+                dataUrl = await createPhraseImage(creationData);
+            } else if (titleType === 'tweet') {
+                dataUrl = await createTweetImage(creationData);
+            } else {
+                dataUrl = await createMemeImage(creationData);
+            }
 
-            window.open(dataUrl, '_blank');
+            const link = document.createElement('a');
+            const safeText = meme.editText.replace(/[^a-z0-9]/gi, '_').slice(0, 20);
+            link.download = `${titleType}_${safeText}.png`;
+            link.href = dataUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
             
         } catch (downloadError) {
             console.error("Failed to create and download image:", downloadError);
@@ -550,7 +663,6 @@ const App: React.FC = () => {
 
     const handleReset = () => {
         uploadedImages.forEach(img => URL.revokeObjectURL(img.previewUrl));
-        if (designSettings.profileAvatarUrl !== DEFAULT_AVATAR_URL) URL.revokeObjectURL(designSettings.profileAvatarUrl);
         if (designSettings.watermark.imageUrl) URL.revokeObjectURL(designSettings.watermark.imageUrl);
         
         setUploadedImages([]);
@@ -558,18 +670,24 @@ const App: React.FC = () => {
         setError(null);
         setIsLoading(false);
         setMemeCategory('pareja');
-        setDesignSettings({
-            showHeader: true,
-            profileName: 'Blogfun',
-            profileHandle: '@blogfun',
-            profileAvatarUrl: DEFAULT_AVATAR_URL,
-            watermark: { type: 'none', text: 'Tu Marca de Agua', imageUrl: null, opacity: 0.7, size: 5, x: 50, y: 85, },
-        });
+        setPhraseCount(10);
+        setPhraseLength('corto');
+        
+        // Only reset watermark, keep profile settings
+        handleWatermarkSettingsChange({ type: 'none', text: 'Tu Marca de Agua', imageUrl: null, opacity: 0.7, size: 5, x: 50, y: 85 });
     };
 
-    const handleTitleTypeChange = (type: 'meme' | 'frase') => {
+    const handleTitleTypeChange = (type: 'meme' | 'frase' | 'tweet') => {
+        if (titleType === type || isLoading) return;
         handleReset();
         setTitleType(type);
+        if (type === 'tweet') {
+            setDesignSettings(prev => ({ ...prev, textAlign: 'left' }));
+        } else if (type === 'frase') {
+            setDesignSettings(prev => ({ ...prev, textAlign: 'center' }));
+        } else {
+             setDesignSettings(prev => ({ ...prev, textAlign: 'left' }));
+        }
     }
     
     const hasImages = uploadedImages.length > 0;
@@ -583,6 +701,7 @@ const App: React.FC = () => {
     }, [isLoading, hasMemes, hasImages, titleType]);
     
     const showCategorySelector = titleType === 'meme' && (currentView === 'upload' || currentView === 'preview');
+    const isTextGenerationMode = titleType === 'frase' || titleType === 'tweet';
 
     return (
         <div className="min-h-screen bg-gray-900 text-white font-sans p-4 sm:p-6 lg:p-8">
@@ -603,10 +722,40 @@ const App: React.FC = () => {
                         <div className="bg-gray-800 p-1.5 rounded-xl flex gap-2 border border-gray-700">
                             <button onClick={() => handleTitleTypeChange('meme')} className={`px-5 py-2 text-base font-semibold rounded-lg transition-colors ${titleType === 'meme' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-300 hover:bg-gray-700'}`}>😂 Modo Meme</button>
                             <button onClick={() => handleTitleTypeChange('frase')} className={`px-5 py-2 text-base font-semibold rounded-lg transition-colors ${titleType === 'frase' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-300 hover:bg-gray-700'}`}>✍️ Modo Frase</button>
+                            <button onClick={() => handleTitleTypeChange('tweet')} className={`px-5 py-2 text-base font-semibold rounded-lg transition-colors ${titleType === 'tweet' ? 'bg-sky-600 text-white shadow-md' : 'text-gray-300 hover:bg-gray-700'}`}>🐦 Modo Tweet</button>
                         </div>
                     </div>
+
+                    {isTextGenerationMode && currentView === 'upload' && (
+                        <div className="flex flex-col items-center justify-center gap-6 mb-8">
+                            <div className="flex items-center gap-3">
+                                <label htmlFor="phrase-count-input" className="text-gray-300">Número de {titleType === 'tweet' ? 'tweets' : 'frases'}:</label>
+                                <input
+                                    type="number" id="phrase-count-input" value={phraseCount}
+                                    onChange={(e) => {
+                                        let count = parseInt(e.target.value, 10);
+                                        if (isNaN(count) || count < 1) count = 1; if (count > 20) count = 20;
+                                        setPhraseCount(count);
+                                    }}
+                                    min="1" max="20" className="bg-gray-700 border border-gray-600 rounded px-2 py-1 w-20 text-center" disabled={isLoading}
+                                />
+                            </div>
+                            {titleType === 'frase' && <div className="flex flex-col items-center gap-3">
+                                <label className="text-gray-300">Largo de los textos:</label>
+                                <div className="flex gap-2 rounded-lg bg-gray-900 p-1">
+                                    {[
+                                        { id: 'muy-corto', label: 'Muy Corto' }, { id: 'corto', label: 'Corto' }, { id: 'largo', label: 'Largo' },
+                                    ].map(opt => (
+                                        <button key={opt.id} onClick={() => setPhraseLength(opt.id as any)} disabled={isLoading}
+                                            className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors ${phraseLength === opt.id ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'} disabled:opacity-50 disabled:cursor-not-allowed`}>
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>}
+                        </div>
+                    )}
                     
-                    {/* Fix: Render MemeCategorySelector */}
                     {showCategorySelector && (
                         <MemeCategorySelector 
                             selectedCategory={memeCategory}
@@ -623,7 +772,7 @@ const App: React.FC = () => {
                         </div>
                     )}
                     
-                    {currentView === 'loading' && <div className="flex justify-center py-16"><LoadingSpinner text={titleType === 'meme' ? 'Analizando imágenes...' : 'Generando frases...'} /></div>}
+                    {currentView === 'loading' && <div className="flex justify-center py-16"><LoadingSpinner text={titleType === 'meme' ? 'Analizando imágenes...' : `Generando ${titleType}s...`} /></div>}
                     
                     {currentView === 'preview' && (
                          <div className="flex flex-col items-center">
@@ -641,9 +790,11 @@ const App: React.FC = () => {
                         <>
                         <GlobalDesignControls 
                             settings={designSettings}
+                            titleType={titleType}
                             onSettingsChange={handleDesignSettingsChange}
                             onWatermarkSettingsChange={handleWatermarkSettingsChange}
                             onWatermarkImageChange={handleWatermarkImageChange}
+                            onError={setError}
                         />
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-8">
                             {generatedMemes.map(meme => (
@@ -653,7 +804,7 @@ const App: React.FC = () => {
                                     designSettings={designSettings}
                                     onMemeTextChange={handleMemeTextChange}
                                     onDownload={handleDownloadMeme}
-                                    isPhraseMode={titleType === 'frase'}
+                                    titleType={titleType}
                                 />
                             ))}
                         </div>
@@ -668,9 +819,9 @@ const App: React.FC = () => {
                                 Empezar de Nuevo
                             </button>
                         )}
-                       {(currentView === 'preview' || (titleType === 'frase' && currentView === 'upload')) && (
+                       {(currentView === 'preview' || (isTextGenerationMode && currentView === 'upload')) && (
                             <button onClick={handleGenerate} className="px-8 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold rounded-lg transition-all transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled={isLoading || (titleType === 'meme' && !hasImages)}>
-                                {titleType === 'meme' ? 'Generar Títulos' : 'Generar Frases'}
+                                {titleType === 'meme' ? 'Generar Títulos' : `Generar ${titleType === 'tweet' ? 'Tweets' : 'Frases'}`}
                             </button>
                        )}
                     </div>

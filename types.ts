@@ -22,6 +22,7 @@ export interface GlobalDesignSettings {
   profileName: string;
   profileHandle: string;
   profileAvatarUrl: string;
+  textAlign: 'left' | 'center' | 'right' | 'justify';
 }
 
 

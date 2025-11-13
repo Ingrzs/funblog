@@ -1,10 +1,10 @@
 
-
 import { generateTitles, generatePhrases } from './services/geminiService.js';
-import { createMemeImage, createPhraseImage } from './services/imageService.js';
+import { createMemeImage, createPhraseImage, createTweetImage } from './services/imageService.js';
 
 const DEFAULT_AVATAR_URL = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgdHJhbnNmb3JtPSJyb3RhdGUoMTAgNTAgNTApIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iI0ZGRiIgc3Ryb2tlPSIjREREIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNIDY1LDQwIEMgNjgsMzUgNzIsMzUgNzUsNDAiIHN0cm9rZT0iYmxhY2siIHN0cm9rZS13aWR0aD0iNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiAvPjxwYXRoIGQ9Ik0gMzAsNjUgUSA1MCw4NSA3MCw2NSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSI2IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIC8+PGNpcmNsZSBjeD0iMzUiIGN5PSI0MCIgcj0iNSIgZmlsbD0iYmxhY2siIC8+PC9nPjwvc3ZnPg==';
 const WHITE_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
+const DESIGN_SETTINGS_KEY = 'viral-generator-design-settings';
 const EMOJIS = {
     // Pareja
     sarcasmo: '😏',
@@ -22,6 +22,9 @@ const EMOJIS = {
     chisme: '😏',
     humor: '😅',
     reflexion: '😌',
+    sarcasmoFrase: '😤',
+    // Tweet
+    tweet: '🐦'
 };
 
 // --- STATE MANAGEMENT ---
@@ -31,11 +34,14 @@ const state = {
     generatedMemes: [],
     titleType: 'meme',
     memeCategory: 'pareja',
+    phraseCount: 10,
+    phraseLength: 'corto',
     designSettings: {
         showHeader: true,
         profileName: 'Blogfun',
         profileHandle: '@blogfun',
         profileAvatarUrl: DEFAULT_AVATAR_URL,
+        textAlign: 'left',
         watermark: { type: 'none', text: 'Tu Marca de Agua', imageUrl: null, opacity: 0.7, size: 5, x: 50, y: 85, imageWidth: 0, imageHeight: 0, },
     },
     isLoading: false,
@@ -47,6 +53,7 @@ const DOMElements = {
     apiKeyContainer: document.getElementById('api-key-manager-container'),
     modeMemeBtn: document.getElementById('mode-meme-btn'),
     modeFraseBtn: document.getElementById('mode-frase-btn'),
+    modeTweetBtn: document.getElementById('mode-tweet-btn'),
     errorContainer: document.getElementById('error-container'),
     uploaderContainer: document.getElementById('uploader-container'),
     previewContainer: document.getElementById('preview-container'),
@@ -56,7 +63,56 @@ const DOMElements = {
     footerButtons: document.getElementById('footer-buttons'),
     memeCategoryContainer: document.getElementById('meme-category-container'),
     mainContent: document.getElementById('main-content'),
+    phraseOptionsContainer: document.getElementById('phrase-options-container'),
 };
+
+// --- HELPERS ---
+const fileToDataURL = (file) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = (error) => reject(error);
+        reader.readAsDataURL(file);
+    });
+};
+
+const saveDesignSettings = () => {
+    try {
+        const settings = {
+            profileName: state.designSettings.profileName,
+            profileHandle: state.designSettings.profileHandle,
+            profileAvatarUrl: state.designSettings.profileAvatarUrl,
+            showHeader: state.designSettings.showHeader,
+            textAlign: state.designSettings.textAlign,
+        };
+        localStorage.setItem(DESIGN_SETTINGS_KEY, JSON.stringify(settings));
+    } catch (e) {
+        console.error("Failed to save design settings:", e);
+    }
+};
+
+const loadDesignSettings = () => {
+    try {
+        const savedSettings = localStorage.getItem(DESIGN_SETTINGS_KEY);
+        if (savedSettings) {
+            const parsed = JSON.parse(savedSettings);
+            state.designSettings.profileName = parsed.profileName || 'Blogfun';
+            state.designSettings.profileHandle = parsed.profileHandle || '@blogfun';
+            state.designSettings.profileAvatarUrl = parsed.profileAvatarUrl || DEFAULT_AVATAR_URL;
+            state.designSettings.showHeader = typeof parsed.showHeader === 'boolean' ? parsed.showHeader : true;
+            state.designSettings.textAlign = parsed.textAlign || 'left';
+        }
+    } catch (e) {
+        console.error("Failed to load design settings:", e);
+    }
+};
+
+const cleanText = (text) => {
+    if (!text) return '';
+    // Elimina comillas dobles, rizadas de apertura y cierre del principio y del final
+    return text.trim().replace(/^["“]|["”]$/g, '');
+};
+
 
 // --- TEMPLATE GENERATORS ---
 const getApiKeyManagerHTML = () => {
@@ -116,6 +172,42 @@ const getMemeCategorySelectorHTML = () => {
     `;
 };
 
+const getPhraseOptionsHTML = () => {
+    const isTweetMode = state.titleType === 'tweet';
+    const lengthOptions = isTweetMode ? [
+        { id: 'corto', label: 'Corto' }
+    ] : [
+        { id: 'muy-corto', label: 'Muy Corto' },
+        { id: 'corto', label: 'Corto' },
+        { id: 'largo', label: 'Largo' },
+    ];
+    return `
+    <div class="flex flex-col items-center justify-center gap-6 mb-8">
+        <div class="flex items-center gap-3">
+            <label for="phrase-count-input" class="text-gray-300">Número de ${isTweetMode ? 'tweets' : 'frases'}:</label>
+            <input type="number" id="phrase-count-input" value="${state.phraseCount}" min="1" max="20" class="bg-gray-700 border border-gray-600 rounded px-2 py-1 w-20 text-center" />
+        </div>
+        ${!isTweetMode ? `
+        <div class="flex flex-col items-center gap-3">
+            <label class="text-gray-300">Largo de los textos:</label>
+            <div class="flex gap-2 rounded-lg bg-gray-900 p-1">
+                ${lengthOptions.map(opt => `
+                    <button
+                        data-length="${opt.id}"
+                        class="phrase-length-btn px-4 py-2 text-sm font-semibold rounded-md transition-colors ${
+                            state.phraseLength === opt.id
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                        }">
+                        ${opt.label}
+                    </button>
+                `).join('')}
+            </div>
+        </div>` : ''}
+    </div>
+    `;
+};
+
 const getPreviewHTML = () => `<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
     ${state.uploadedImages.map(image => `
         <div key="${image.id}" class="aspect-square rounded-lg overflow-hidden ring-2 ring-gray-700">
@@ -130,11 +222,19 @@ const getResultsHTML = () => `
     </div>`;
 
 const getGlobalControlsHTML = () => {
-    const { showHeader, profileName, profileHandle, profileAvatarUrl, watermark } = state.designSettings;
+    const { showHeader, profileName, profileHandle, profileAvatarUrl, watermark, textAlign } = state.designSettings;
+    const isTextMode = state.titleType === 'frase' || state.titleType === 'tweet';
+    const alignmentOptions = [
+        { align: 'left', label: 'Izquierda', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" /></svg>' },
+        { align: 'center', label: 'Centro', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M6.75 17.25h10.5" /></svg>' },
+        { align: 'right', label: 'Derecha', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-12 5.25h12" /></svg>' },
+        { align: 'justify', label: 'Justificar', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>' }
+    ];
+
     return `
     <div class="p-6 bg-gray-800 rounded-xl shadow-lg mb-8 border border-gray-700">
         <h2 class="text-xl font-bold text-indigo-300 mb-4">Controles de Diseño Globales</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
             <div class="flex flex-col gap-4">
                 <h3 class="text-lg font-semibold text-gray-200">Perfil y Encabezado</h3>
                 <label class="flex items-center justify-between cursor-pointer">
@@ -149,6 +249,22 @@ const getGlobalControlsHTML = () => {
                         <input type="text" id="profile-handle-input" value="${profileHandle}" class="w-full bg-gray-700 border border-gray-600 rounded p-2 mt-2 text-white" placeholder="@usuario"/>
                     </div>
                 </div>
+                ${isTextMode ? '' : `
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-200 mt-4">Alineación de Texto</h3>
+                    <div class="flex gap-1 rounded-lg bg-gray-900 p-1 mt-2">
+                         ${alignmentOptions.map(({ align, label, icon }) => `
+                            <button
+                                data-align="${align}"
+                                class="alignment-btn flex-1 p-2 rounded-md transition-colors ${textAlign === align ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}"
+                                aria-label="Alinear ${label}"
+                                title="${label}"
+                            >
+                                ${icon}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>`}
             </div>
             <div class="flex flex-col gap-4">
                  <h3 class="text-lg font-semibold text-gray-200">Marca de Agua</h3>
@@ -184,22 +300,59 @@ const getGlobalControlsHTML = () => {
 };
 
 const getMemeCardHTML = (meme) => {
-    const { showHeader, profileName, profileHandle, profileAvatarUrl, watermark } = state.designSettings;
+    const { showHeader, profileName, profileHandle, profileAvatarUrl, watermark, textAlign } = state.designSettings;
     const isPhraseMode = state.titleType === 'frase';
+    const isTweetMode = state.titleType === 'tweet';
+
+    let containerClasses = 'bg-gray-100 text-gray-900';
+    if (isPhraseMode || isTweetMode) containerClasses = 'bg-white';
+    if (isPhraseMode) containerClasses += ' aspect-square flex flex-col';
+
+    let contentLayoutClasses = 'w-full relative';
+    if (isPhraseMode) {
+        contentLayoutClasses += ' flex-grow flex items-center justify-center';
+    }
+
+    const headerHTML = `
+        <div class="flex gap-3 ${isTweetMode ? 'mb-3' : ''}">
+            <div class="w-12 h-12 flex-shrink-0"><img src="${profileAvatarUrl}" alt="Avatar" class="w-full h-full rounded-full object-cover" /></div>
+            <div class="flex-1" ${isTweetMode ? 'style="padding-top: 2px;"' : ''}>
+                <p class="font-bold text-gray-800" style="${isTweetMode ? 'font-size: 16px; line-height: 1.2;' : 'font-size: 1rem;'}">${profileName}</p>
+                <p class="text-gray-500" style="${isTweetMode ? 'font-size: 15px; line-height: 1.2;' : 'font-size: 0.875rem;'}">${profileHandle}</p>
+            </div>
+        </div>`;
+
+    let textEditorHTML;
+    if (isTweetMode) {
+        textEditorHTML = `<div
+                contenteditable="true"
+                class="edit-text-area w-full bg-transparent p-0 border-0 focus:ring-0 whitespace-pre-wrap break-words"
+                style="font-size: 23px; line-height: 30px;"
+                data-placeholder="Escribe tu texto aquí..."
+            >${meme.editText}</div>`;
+    } else if (isPhraseMode) {
+        textEditorHTML = `<div
+                contenteditable="true"
+                class="edit-text-area w-full bg-transparent p-0 border-0 focus:ring-0 whitespace-pre-wrap break-words"
+                style="font-size: 28px; line-height: 40px; text-align: ${textAlign};"
+                data-placeholder="Escribe tu texto aquí..."
+            >${meme.editText}</div>`;
+    } else { // Meme mode
+        textEditorHTML = `<textarea
+                class="edit-text-area w-full bg-transparent p-0 border-0 focus:ring-0 resize-none text-lg text-gray-900"
+                style="text-align: ${textAlign};"
+                placeholder="Escribe tu texto aquí..."
+                rows="1"
+            >${meme.editText}</textarea>`;
+    }
+
     return `
     <div class="bg-gray-800 rounded-lg shadow-lg shadow-black/30 flex flex-col gap-4" data-meme-id="${meme.id}">
-        <div class="${isPhraseMode ? 'bg-white' : 'bg-gray-100'} text-gray-900 rounded-t-lg border-b border-gray-200 relative overflow-hidden p-4">
-            ${showHeader ? `
-            <div class="flex items-center gap-3">
-                <div class="w-12 h-12"><img src="${profileAvatarUrl}" alt="Avatar" class="w-full h-full rounded-full object-cover" /></div>
-                <div class="flex-1">
-                    <p class="w-full bg-transparent font-bold text-gray-800 border-0 p-0 focus:ring-0">${profileName}</p>
-                    <p class="w-full bg-transparent text-sm text-gray-500 border-0 p-0 focus:ring-0">${profileHandle}</p>
-                </div>
-            </div>` : ''}
-            <div class="mt-3 w-full relative ${isPhraseMode ? 'min-h-[18rem] flex items-center justify-center' : ''}">
-                <textarea class="edit-text-area w-full bg-transparent p-0 border-0 focus:ring-0 resize-none ${isPhraseMode ? 'text-2xl font-bold text-center' : `text-lg text-gray-900`}" placeholder="Escribe tu texto aquí..." rows="1">${meme.editText}</textarea>
-                ${!isPhraseMode ? `<img src="${meme.imageUrl}" alt="Meme" class="w-full h-auto rounded-lg object-cover mt-3" />` : ''}
+        <div class="${containerClasses} text-gray-900 rounded-t-lg border-b border-gray-200 relative overflow-hidden p-4">
+            ${(showHeader && (isPhraseMode || isTweetMode)) || (!isTweetMode && showHeader) ? headerHTML : ''}
+            <div class="${contentLayoutClasses} ${!isTweetMode ? 'mt-3' : ''}">
+                ${textEditorHTML}
+                ${!isPhraseMode && !isTweetMode ? `<img src="${meme.imageUrl}" alt="Meme" class="w-full h-auto rounded-lg object-cover mt-3" />` : ''}
                 ${watermark.type !== 'none' ? `
                 <div class="absolute pointer-events-none select-none" style="left: ${watermark.x}%; top: ${watermark.y}%; opacity: ${watermark.opacity}; transform: translate(-50%, -50%);">
                     ${watermark.type === 'text' ? `<span class="font-bold text-white whitespace-nowrap" style="WebkitTextStroke: 1px black; text-shadow: 2px 2px 4px rgba(0,0,0,0.7); font-size: ${watermark.size * 4}px">${watermark.text}</span>` : `<img src="${watermark.imageUrl}" alt="Watermark" class="h-auto" style="max-width: ${watermark.size * 15}px" />`}
@@ -229,10 +382,14 @@ const getFooterButtonsHTML = () => {
     if (hasImages || hasMemes) {
         buttons += `<button id="reset-btn" class="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-white font-bold rounded-lg transition-colors">Empezar de Nuevo</button>`;
     }
-    const showGenerate = (state.titleType === 'meme' && hasImages && !hasMemes) || (state.titleType === 'frase' && !hasMemes);
+    const showGenerate = (state.titleType === 'meme' && hasImages && !hasMemes) || ((state.titleType === 'frase' || state.titleType === 'tweet') && !hasMemes);
     if (showGenerate) {
+        let buttonText = 'Generar';
+        if (state.titleType === 'meme') buttonText = 'Generar Títulos';
+        if (state.titleType === 'frase') buttonText = 'Generar Frases';
+        if (state.titleType === 'tweet') buttonText = 'Generar Tweets';
         buttons += `<button id="generate-btn" class="px-8 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold rounded-lg transition-all transform hover:scale-105 shadow-lg">
-            ${state.titleType === 'meme' ? 'Generar Títulos' : 'Generar Frases'}
+            ${buttonText}
         </button>`;
     }
     return buttons;
@@ -257,24 +414,26 @@ const render = () => {
         DOMElements.memeCategoryContainer.innerHTML = getMemeCategorySelectorHTML();
     }
     
+    // Phrase Options
+    const showPhraseOptions = (state.titleType === 'frase' || state.titleType === 'tweet') && state.generatedMemes.length === 0 && !state.isLoading;
+    DOMElements.phraseOptionsContainer.classList.toggle('hidden', !showPhraseOptions);
+    if (showPhraseOptions) {
+        DOMElements.phraseOptionsContainer.innerHTML = getPhraseOptionsHTML();
+    }
+    
     DOMElements.loadingContainer.classList.toggle('hidden', currentView !== 'loading');
     DOMElements.uploaderContainer.classList.toggle('hidden', currentView !== 'upload' || state.titleType !== 'meme');
     DOMElements.previewContainer.classList.toggle('hidden', currentView !== 'preview');
     DOMElements.resultsContainer.classList.toggle('hidden', currentView !== 'results');
     
     if (currentView === 'loading') {
-        DOMElements.loadingText.textContent = state.titleType === 'meme' ? 'Analizando imágenes...' : 'Generando frases...';
+        DOMElements.loadingText.textContent = state.titleType === 'meme' ? 'Analizando imágenes...' : (state.titleType === 'tweet' ? 'Generando tweets...' : 'Generando frases...');
     } else if (currentView === 'upload' && state.titleType === 'meme') {
         DOMElements.uploaderContainer.innerHTML = getUploaderHTML();
     } else if (currentView === 'preview') {
         DOMElements.previewContainer.innerHTML = getPreviewHTML();
     } else if (currentView === 'results') {
         DOMElements.resultsContainer.innerHTML = getResultsHTML();
-        // Manually trigger autogrow for textareas after they are rendered
-        document.querySelectorAll('.edit-text-area').forEach(area => {
-            area.style.height = 'auto';
-            area.style.height = `${area.scrollHeight}px`;
-        });
     }
 
     // Footer
@@ -293,16 +452,33 @@ const handleModeChange = (type) => {
     if (state.titleType === type || state.isLoading) return;
     handleReset();
     state.titleType = type;
+    
+    if (type === 'tweet') {
+        state.designSettings.textAlign = 'left';
+    } else if (type === 'frase') {
+        state.designSettings.textAlign = 'center';
+    } else {
+        state.designSettings.textAlign = 'left';
+    }
+
     DOMElements.modeMemeBtn.classList.toggle('bg-indigo-600', type === 'meme');
     DOMElements.modeMemeBtn.classList.toggle('text-white', type === 'meme');
     DOMElements.modeMemeBtn.classList.toggle('shadow-md', type === 'meme');
     DOMElements.modeMemeBtn.classList.toggle('text-gray-300', type !== 'meme');
     DOMElements.modeMemeBtn.classList.toggle('hover:bg-gray-700', type !== 'meme');
+    
     DOMElements.modeFraseBtn.classList.toggle('bg-purple-600', type === 'frase');
     DOMElements.modeFraseBtn.classList.toggle('text-white', type === 'frase');
     DOMElements.modeFraseBtn.classList.toggle('shadow-md', type === 'frase');
     DOMElements.modeFraseBtn.classList.toggle('text-gray-300', type !== 'frase');
     DOMElements.modeFraseBtn.classList.toggle('hover:bg-gray-700', type !== 'frase');
+
+    DOMElements.modeTweetBtn.classList.toggle('bg-sky-600', type === 'tweet');
+    DOMElements.modeTweetBtn.classList.toggle('text-white', type === 'tweet');
+    DOMElements.modeTweetBtn.classList.toggle('shadow-md', type === 'tweet');
+    DOMElements.modeTweetBtn.classList.toggle('text-gray-300', type !== 'tweet');
+    DOMElements.modeTweetBtn.classList.toggle('hover:bg-gray-700', type !== 'tweet');
+
     render();
 };
 
@@ -316,6 +492,14 @@ const handleFilesSelected = (files) => {
     state.generatedMemes = [];
     state.error = null;
     render();
+};
+
+const cleanAllTitles = (titles) => {
+    const cleaned = {};
+    for (const key in titles) {
+        cleaned[key] = cleanText(titles[key]);
+    }
+    return cleaned;
 };
 
 const handleGenerate = async () => {
@@ -333,13 +517,15 @@ const handleGenerate = async () => {
         if (state.titleType === 'meme') {
             const memePromises = state.uploadedImages.map(async (image) => {
                 const titles = await generateTitles(image.file, state.apiKey, state.memeCategory);
-                return { id: image.id, imageUrl: image.previewUrl, titles, editText: Object.values(titles)[0] || '' };
+                const cleanedTitles = cleanAllTitles(titles);
+                return { id: image.id, imageUrl: image.previewUrl, titles: cleanedTitles, editText: Object.values(cleanedTitles)[0] || '' };
             });
             state.generatedMemes = await Promise.all(memePromises);
-        } else {
-            const phrases = await generatePhrases(state.apiKey);
-            state.generatedMemes = phrases.map((p, index) => ({
-                id: `phrase-${Date.now()}-${index}`,
+        } else if (state.titleType === 'frase' || state.titleType === 'tweet') {
+            const results = await generatePhrases(state.apiKey, state.phraseCount, state.phraseLength);
+            const cleanedResults = results.map(p => cleanAllTitles(p));
+            state.generatedMemes = cleanedResults.map((p, index) => ({
+                id: `${state.titleType}-${Date.now()}-${index}`,
                 imageUrl: WHITE_PIXEL,
                 titles: p,
                 editText: Object.values(p)[0] || '',
@@ -355,22 +541,25 @@ const handleGenerate = async () => {
 };
 
 const handleReset = () => {
+    // Revoke object URLs for uploaded files
     state.uploadedImages.forEach(img => URL.revokeObjectURL(img.previewUrl));
-    if (state.designSettings.profileAvatarUrl !== DEFAULT_AVATAR_URL) URL.revokeObjectURL(state.designSettings.profileAvatarUrl);
-    if (state.designSettings.watermark.imageUrl) URL.revokeObjectURL(state.designSettings.watermark.imageUrl);
+    // Revoke watermark image if it's a blob URL
+    if (state.designSettings.watermark.imageUrl && state.designSettings.watermark.imageUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(state.designSettings.watermark.imageUrl);
+    }
     
+    // Reset volatile state
     state.uploadedImages = [];
     state.generatedMemes = [];
     state.error = null;
     state.isLoading = false;
     state.memeCategory = 'pareja';
-    state.designSettings = {
-        showHeader: true,
-        profileName: 'Blogfun',
-        profileHandle: '@blogfun',
-        profileAvatarUrl: DEFAULT_AVATAR_URL,
-        watermark: { type: 'none', text: 'Tu Marca de Agua', imageUrl: null, opacity: 0.7, size: 5, x: 50, y: 85, imageWidth: 0, imageHeight: 0 },
-    };
+    state.phraseCount = 10;
+    state.phraseLength = 'corto';
+    
+    // Only reset watermark, keep profile settings
+    state.designSettings.watermark = { type: 'none', text: 'Tu Marca de Agua', imageUrl: null, opacity: 0.7, size: 5, x: 50, y: 85, imageWidth: 0, imageHeight: 0 };
+    
     render();
 };
 
@@ -383,13 +572,17 @@ const handleSuggestionClick = (button) => {
     
     const meme = state.generatedMemes.find(m => m.id === memeId);
     if (meme) {
-        meme.editText = newText;
+        meme.editText = newText; // Text is already cleaned
         const area = card.querySelector('.edit-text-area');
         if (area) {
-            area.value = newText;
-            // Trigger auto-grow
-            area.style.height = 'auto';
-            area.style.height = `${area.scrollHeight}px`;
+            if (area.tagName === 'TEXTAREA') {
+                area.value = newText;
+                // Trigger auto-grow
+                area.style.height = 'auto';
+                area.style.height = `${area.scrollHeight}px`;
+            } else {
+                area.textContent = newText;
+            }
         }
     }
 };
@@ -413,11 +606,18 @@ const handleDownload = async (button) => {
             text: meme.editText,
             design: state.designSettings,
         };
-        const dataUrl = state.titleType === 'frase'
-            ? await createPhraseImage(creationData)
-            : await createMemeImage(creationData);
+
+        let dataUrl;
+        if (state.titleType === 'frase') {
+            dataUrl = await createPhraseImage(creationData);
+        } else if (state.titleType === 'tweet') {
+            dataUrl = await createTweetImage(creationData);
+        } else {
+            dataUrl = await createMemeImage(creationData);
+        }
         
-        window.open(dataUrl, '_blank');
+        const win = window.open();
+        win.document.write(`<body style="margin:0; background:#111;"><img src="${dataUrl}" style="display:block; margin:auto; max-width:100%; height:auto; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);" alt="Generated Image"></body>`);
 
     } catch (downloadError) {
         console.error("Failed to create and download image:", downloadError);
@@ -426,30 +626,40 @@ const handleDownload = async (button) => {
     }
 };
 
-const handleMemeTextChange = (area) => {
-    const card = area.closest('[data-meme-id]');
+const handleMemeTextChange = (element) => {
+    const card = element.closest('[data-meme-id]');
     if (!card) return;
 
     const memeId = card.dataset.memeId;
     const meme = state.generatedMemes.find(m => m.id === memeId);
     if (meme) {
-      meme.editText = area.value;
+        if (element.tagName === 'TEXTAREA') {
+            meme.editText = element.value;
+            // Auto-grow logic for textarea
+            element.style.height = 'auto';
+            element.style.height = `${element.scrollHeight}px`;
+        } else {
+            meme.editText = element.textContent || '';
+        }
     }
-    
-    // Auto-grow logic
-    area.style.height = 'auto';
-    area.style.height = `${area.scrollHeight}px`;
 };
 
-const handleAvatarChange = (e) => {
+const handleAvatarChange = async (e) => {
     const target = e.target;
     if (target.files && target.files[0]) {
-        const newAvatarUrl = URL.createObjectURL(target.files[0]);
-        if (state.designSettings.profileAvatarUrl !== DEFAULT_AVATAR_URL) {
-            URL.revokeObjectURL(state.designSettings.profileAvatarUrl);
+        try {
+            const dataUrl = await fileToDataURL(target.files[0]);
+            if (state.designSettings.profileAvatarUrl && state.designSettings.profileAvatarUrl.startsWith('blob:')) {
+                 URL.revokeObjectURL(state.designSettings.profileAvatarUrl);
+            }
+            state.designSettings.profileAvatarUrl = dataUrl;
+            saveDesignSettings();
+            render();
+        } catch (err) {
+            console.error("Error processing avatar image:", err);
+            state.error = "No se pudo cargar la imagen de perfil.";
+            render();
         }
-        state.designSettings.profileAvatarUrl = newAvatarUrl;
-        render();
     }
 };
 
@@ -517,10 +727,12 @@ const initialize = () => {
     if (savedKey) {
         state.apiKey = savedKey;
     }
+    loadDesignSettings();
 
     // Attach static listeners
     DOMElements.modeMemeBtn.addEventListener('click', () => handleModeChange('meme'));
     DOMElements.modeFraseBtn.addEventListener('click', () => handleModeChange('frase'));
+    DOMElements.modeTweetBtn.addEventListener('click', () => handleModeChange('tweet'));
 
     // Attach delegated listeners to parent containers
     DOMElements.apiKeyContainer.addEventListener('click', (e) => {
@@ -543,6 +755,26 @@ const initialize = () => {
         }
     });
 
+    DOMElements.phraseOptionsContainer.addEventListener('input', (e) => {
+        if (e.target.id === 'phrase-count-input') {
+            let count = parseInt(e.target.value, 10);
+            if (isNaN(count) || count < 1) count = 1;
+            if (count > 20) count = 20;
+            state.phraseCount = count;
+        }
+    });
+
+    DOMElements.phraseOptionsContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.phrase-length-btn');
+        if (btn) {
+            const length = btn.dataset.length;
+            if (length && length !== state.phraseLength) {
+                state.phraseLength = length;
+                render();
+            }
+        }
+    });
+
     DOMElements.footerButtons.addEventListener('click', (e) => {
         if (e.target.id === 'reset-btn') handleReset();
         if (e.target.id === 'generate-btn') handleGenerate();
@@ -559,6 +791,7 @@ const initialize = () => {
     // Delegated listeners for the results container, which is often re-rendered
     DOMElements.resultsContainer.addEventListener('click', (e) => {
         const target = e.target;
+        const alignBtn = target.closest('.alignment-btn');
         if (target.closest('.suggestion-btn')) handleSuggestionClick(target.closest('.suggestion-btn'));
         if (target.closest('.download-btn')) handleDownload(target.closest('.download-btn'));
         if (target.id === 'avatar-img') document.getElementById('avatar-upload').click();
@@ -575,13 +808,24 @@ const initialize = () => {
             state.designSettings.watermark.imageUrl = null;
             render();
         }
+        if (alignBtn && alignBtn.dataset.align) {
+            state.designSettings.textAlign = alignBtn.dataset.align;
+            saveDesignSettings();
+            render();
+        }
     });
 
     DOMElements.resultsContainer.addEventListener('input', (e) => {
         const target = e.target;
         if (target.matches('.edit-text-area')) handleMemeTextChange(target);
-        if (target.id === 'profile-name-input') state.designSettings.profileName = target.value;
-        if (target.id === 'profile-handle-input') state.designSettings.profileHandle = target.value;
+        if (target.id === 'profile-name-input') {
+            state.designSettings.profileName = target.value;
+            saveDesignSettings();
+        }
+        if (target.id === 'profile-handle-input') {
+            state.designSettings.profileHandle = target.value;
+            saveDesignSettings();
+        }
         if (target.id === 'watermark-text-input') {
             state.designSettings.watermark.text = target.value;
             render();
@@ -600,6 +844,7 @@ const initialize = () => {
         const target = e.target;
         if (target.id === 'show-header-toggle') {
             state.designSettings.showHeader = target.checked;
+            saveDesignSettings();
             render();
         }
         if (target.id === 'avatar-upload') handleAvatarChange(e);
@@ -613,6 +858,7 @@ const initialize = () => {
     });
 
     // Initial Render
+    handleModeChange('meme');
     render();
 };
 

@@ -1,5 +1,8 @@
 
 
+
+
+
 import { GoogleGenAI } from "@google/genai";
 
 // Fix: Add types for the file argument and the Promise return value
@@ -78,45 +81,54 @@ const getMemePrompt = (category: string) => {
 }
 
 
-const getPhrasePrompt = () => `
-Crea 10 frases variadas, inspiradas en el estilo de Blog Fun, Zeneida o Jarhat Pacheco, usando lenguaje informal y expresivo.
+const getPhrasePrompt = (count: number, length: 'muy-corto' | 'corto' | 'largo') => {
+    const lengthInstructions = {
+        'muy-corto': 'Cada frase debe tener 1 línea de texto, corta y directa como un tweet.',
+        'corto': 'Cada frase debe tener entre 1 y 2 líneas de texto, perfectas para un post.',
+        'largo': 'Cada frase debe tener entre 3 y 4 líneas, como una reflexión breve pero contundente.',
+    };
 
-Tono y Temas:
-- Amor, desamor y relaciones.
-- Chisme, morbo e indirectas.
-- Humor cotidiano (trabajo, escuela, vida adulta).
-- Reflexión o autoengaño irónico.
-- Sarcasmo o drama ligero.
+    const instruction = lengthInstructions[length] || 'Las frases deben ser cortas y directas.';
 
-Instrucciones:
-- Las frases deben ser cortas, directas y auténticas, no cursis ni poéticas.
-- Puedes censurar levemente palabras (ej: p4reja, m4rido, f3liz).
-- Usa los siguientes emojis para clasificar cada frase. Puedes repetir categorías.
-- IMPORTANTE: Varía las frases en cada nueva generación. No repitas ideas o estructuras de forma idéntica.
+    return `
+**Tu Rol:** Eres un creador de contenido viral experto en redes sociales, especializado en frases que conectan emocionalmente con un público femenino joven y adulto. Tu estilo es como el de 'Blog Fun', 'Zeneida' o 'Jarhat Pacheco': directo, ingenioso, a veces sarcástico y siempre auténtico.
 
-Ejemplos de estilo:
-“Yo no ando buscando amor, ando buscando quien no me quite la paz.”
-“No me da coraje que tenga novia, me da coraje que no sea mejor que yo.”
-“Yo también decía: ‘ya no vuelvo’, y aquí ando, haciendo fila otra vez.”
-“A veces mi trabajo no me estresa, me da ganas de llorar por deporte.”
-“Mi problema no es el amor, es que me gustan los proyectos incompletos.”
-“Yo no soy chismosa, solo tengo buena memoria y me gusta confirmar.”
-“Se me pasó el enojo, pero no el apunte mental que hice.”
-“Si me vas a mentir, mínimo que valga la pena el drama.”
-“Hay ex que deberían pagar renta por vivir en mi mente.”
-“A veces quiero paz, pero también quiero saber con quién anda.”
+**Misión:** Genera ${count} frases originales y variadas que provoquen una reacción inmediata (risa, identificación, "¡totalmente!").
 
-Formato de Salida EXACTO (10 frases en total, puedes mezclar y repetir las categorías):
-💔: [Texto de la frase aquí]
-😏: [Texto de la frase aquí]
-😅: [Texto de la frase aquí]
-😌: [Texto de la frase aquí]
-😤: [Texto de la frase aquí]
-... y así hasta completar 10 frases.
+**Reglas de Oro:**
+1.  **Longitud:** ${instruction}
+2.  **Tono y Temas:**
+    *   **Relaciones:** Amor, desamor, celos, casi algo, ex, expectativas vs. realidad.
+    *   **Sarcasmo y Humor:** Situaciones cotidianas de la vida adulta (trabajo, dinero, cansancio) con un toque irónico.
+    *   **Indirectas y "Chisme":** Frases que se sientan como un secreto contado entre amigas.
+    *   **Reflexiones Irónicas:** Pensamientos sobre la vida, pero sin ser un cliché de superación personal. Más bien, un autoengaño divertido.
+3.  **Estilo de Escritura:**
+    *   **Autenticidad:** Usa un lenguaje coloquial, como si hablaras con una amiga. Evita ser formal o poético.
+    *   **Censura Creativa:** Utiliza jerga de internet y censura sutil para palabras fuertes (ej: "puchaina", "f3liz", "m4l", "la queso", "bby").
+    *   **CERO CLICHÉS:** Prohibido usar frases cursis, motivacionales baratas o ideas muy repetidas. Busca siempre un giro inesperado.
+    *   **VARIEDAD ABSOLUTA:** Es CRÍTICO que no repitas estructuras (ej: no empezar todas las frases con "Yo cuando..." o "A veces..."). Cada frase debe ser única en su construcción.
 
-Para asegurar la aleatoriedad, usa este número como inspiración: ${Math.random()}.
+**Ejemplos de Calidad (Inspírate, no copies):**
+*   “Mi problema no es que me mientas, es que te creo.”
+*   “Yo también tuve un ‘quédate, no importa que me hagas pedazos’.”
+*   “A veces quisiera ser millonaria para ver si mis problemas de verdad son por dinero.”
+*   “Me anda buscando el SAT y también el que juró que no podía vivir sin mí.”
+*   “No me quemé, pero qué bien alumbré.”
+*   “Te perdono el casi algo, pero devuélveme mis ganas de volver a intentar.”
+*   “Mi contacto de emergencia es mi mamá para que le diga a mi jefe que no voy a ir a trabajar.”
+
+**Formato de Salida Obligatorio:**
+Genera EXACTAMENTE ${count} frases. Clasifica cada una con UNO de los siguientes emojis. Puedes repetir emojis.
+💔: [Texto de la frase sobre relaciones o desamor]
+😏: [Texto de la frase con chisme, indirecta o sarcasmo de relaciones]
+😅: [Texto de la frase con humor sobre la vida cotidiana]
+😌: [Texto de la frase con una reflexión irónica o nostálgica]
+😤: [Texto de la frase con sarcasmo general, estrés o queja graciosa]
+... y así hasta completar las ${count} frases.
+
+Para asegurar la aleatoriedad, usa este número como semilla: ${Math.random()}.
 `;
-
+};
 
 const parseMemeTitles = (text: string) => {
   const lines = text.split('\n').filter(line => line.trim() !== '');
@@ -154,13 +166,12 @@ const parsePhrases = (text: string) => {
         } else if (line.startsWith('😌:')) {
             phrases.push({ reflexion: line.replace('😌:', '').trim() });
         } else if (line.startsWith('😤:')) {
-            phrases.push({ sarcasmo: line.replace('😤:', '').trim() });
+            phrases.push({ sarcasmoFrase: line.replace('😤:', '').trim() });
         }
     });
 
     return phrases;
 }
-
 
 export const generateTitles = async (imageFile: File, apiKey: string, category: string): Promise<Record<string, string>> => {
   const ai = new GoogleGenAI({ apiKey });
@@ -202,12 +213,12 @@ export const generateTitles = async (imageFile: File, apiKey: string, category: 
 };
 
 // Fix: Add types for function arguments and the Promise return value
-export const generatePhrases = async (apiKey: string): Promise<Record<string, string>[]> => {
+export const generatePhrases = async (apiKey: string, count: number, length: 'muy-corto' | 'corto' | 'largo'): Promise<Record<string, string>[]> => {
     const ai = new GoogleGenAI({ apiKey });
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: getPhrasePrompt(),
+            contents: getPhrasePrompt(count, length),
         });
 
         const parsed = parsePhrases(response.text);
