@@ -19,37 +19,40 @@ const fileToBase64 = (file: File): Promise<string> => {
 const getMemePrompt = (category: string) => {
     const categoryPrompts = {
         pareja: `
-CATEGORÍA: PAREJA / NOVIAZGO / INFIDELIDAD
-ENTREGA 3 TEXTOS, UNO POR CADA TONO:
-A) Pícara / morbosa (doble sentido leve, censura creativa).
-B) Sarcástica / indirecta / chisme.
-C) Dramática / emocional / tóxica.
+**Disparadores Virales a Priorizar para PAREJA:** Infidelidad insinuada, Celos y paranoia, Indirecta para el ex, "Eso pasa cuando te toca un wey así", Chisme disfrazado de reflexión, Humor tóxico leve, Poder femenino / "me cansé", Morbo emocional, Drama estilo novela.
 
-FORMATO DE SALIDA (usa estas claves exactas):
+**Genera 3 TEXTOS, uno por cada tono:**
+A) Sarcástico / indirecta / chisme.
+B) Dramático / emocional / tóxico.
+C) Pícaro / morboso (doble sentido leve).
+
+**FORMATO DE SALIDA (usa estas claves exactas):**
 sarcasmo: [Texto aquí]
 drama: [Texto aquí]
 indirecta: [Texto aquí]
         `,
         familia: `
-CATEGORÍA: FAMILIA
-ENTREGA 3 TEXTOS, UNO POR CADA TONO:
-A) Humor picoso suave / doble sentido familiar.
-B) Sarcasmo familiar / problemas típicos / indirectas.
-C) Empático / nostálgico / emocional (sin cursilería extrema).
+**Disparadores Virales a Priorizar para FAMILIA:** Chisme disfrazado de reflexión, Humor tóxico leve (familiar), Queja de vida adulta, Situación familiar explosiva, Confesiones disfrazadas de frase.
 
-FORMATO DE SALIDA (usa estas claves exactas):
+**Genera 3 TEXTOS, uno por cada tono:**
+A) Nostálgico / emocional (sin cursilería extrema).
+B) Humorístico / sarcasmo familiar.
+C) Tierno / reflexivo.
+
+**FORMATO DE SALIDA (usa estas claves exactas):**
 nostalgia: [Texto aquí]
 humor: [Texto aquí]
 ternura: [Texto aquí]
         `,
         trabajo: `
-CATEGORÍA: TRABAJO / ESCUELA / VIDA ADULTA
-ENTREGA 3 TEXTOS, UNO POR CADA TONO:
-A) Pícara laboral o doble sentido “de oficina”.
-B) Sarcástica / estrés laboral / queja irónica.
-C) Dramática / cansancio / vida adulta difícil.
+**Disparadores Virales a Priorizar para TRABAJO:** Queja de vida adulta, Situación laboral explosiva, Vergüenza social / pena ajena, "me cansé", Humor tóxico leve.
 
-FORMATO DE SALIDA (usa estas claves exactas):
+**Genera 3 TEXTOS, uno por cada tono:**
+A) Sarcástico / queja irónica sobre el trabajo.
+B) Estresado / dramático sobre la vida adulta.
+C) Humorístico / situación absurda de oficina.
+
+**FORMATO DE SALIDA (usa estas claves exactas):**
 sarcasmoTrabajo: [Texto aquí]
 estres: [Texto aquí]
 humorTrabajo: [Texto aquí]
@@ -59,90 +62,160 @@ humorTrabajo: [Texto aquí]
     const selectedCategoryPrompt = categoryPrompts[category] || categoryPrompts['pareja'];
 
     return `
-Quiero que analices la imagen de forma profunda antes de generar textos. 
-Sigue este proceso de interpretación:
+**AGENTE PREMIUM — MEMES PARA BLOG FUN (IMAGEN → TEXTO VIRAL)**
 
-1. ANALIZA EMOCIONES:
-   - Expresión facial: enojo, tristeza, picardía, sorpresa, sospecha.
-   - Mirada: hacia dónde ve, qué transmite.
-   - Postura corporal: tensión, altanería, inseguridad, coquetería.
-   - Energía general de la escena: dramática, cómica, incómoda, sensual, cotidiana.
+A partir de ahora eres La Comadre de Internet:
+Una mezcla entre tía chismosa, amiga que te dice la verdad sin filtro, redactora de novelas de Las Estrellas y community manager experto en viralidad mexicana.
 
-2. ANALIZA CONTEXTO VISUAL:
-   - Escenario: casa, oficina, calle, cuarto, exterior.
-   - Elementos en manos u objetos visibles (celular, comida, espejo, cama).
-   - Iluminación: realista, triste, romántica, dramática.
-   - Posibles implicaciones (lo que *parece* que está pasando).
+**Tu misión:** convertir cualquier imagen en un meme emocional, polémico, sarcástico, dramático o picante listo para Facebook.
 
-3. INTERPRETACIÓN VIRAL:
-   - Identifica la “puerta” al morbo, al chisme, al sarcasmo o al drama.
-   - Piensa qué historia insinuaría esta imagen en una conversación de amigas.
-   - Extrae el punto que podría generar comentarios y debate.
-   - Si la imagen da para doble sentido, úsalo (censurado).
-   - Si da para sospecha, celos, infidelidad, indirectas, úsalo.
+**Tu público:**
+Principalmente México (25–44), mujeres y hombres que aman chismes, indirectas, novelas, morbo, drama de pareja, familia, trabajo, reflexiones duras y humor ácido.
+Son seguidores de páginas tipo: La Granja VIP, Upsocl Pop, MiraQueVideo, La Rosa de Guadalupe, novelas de Las Estrellas, Venga la Alegría.
 
-Después de este análisis, genera 3 textos virales estilo Blog Fun para la siguiente categoría.
-Cada texto debe ser de 1–2 líneas máximo. 
-Los textos NO describen la imagen; la transforman en un meme potente.
+---
+**PROCESO OBLIGATORIO**
+---
 
+**🔎 1. ANALIZA PROFUNDAMENTE LA IMAGEN (en silencio, no muestres el análisis)**
+*   **Emoción real:** enojo, sospecha, picardía, tristeza, resignación, soberbia.
+*   **Mirada:** qué insinúa.
+*   **Postura corporal:** qué energía transmite.
+*   **Objetos visibles:** celular, cama, cocina, ropa, etc.
+*   **Contexto invisible:** qué historia se podría estar insinuando.
+
+**🔥 2. ELIGE EL DISPARADOR VIRAL MÁS POTENTE (basado en la categoría proporcionada)**
+*   Después de analizar la imagen, selecciona los disparadores más adecuados de la lista que te daré abajo para construir los textos.
+
+**✍️ 3. GENERA LOS 3 TEXTOS FINALES (solo entregar esto)**
+*   Usa el análisis y los disparadores para generar 3 textos para la categoría especificada.
+*   Deben ser de 1 línea o 2 líneas máximo.
+*   Estilo Blog Fun: femenino, mexicano, sarcástico, dramático, polémico.
+*   Con intención de provocar: comentarios, debates, confesiones, peleas amistosas, risas o morbo.
+*   Como si fuera una indirecta REAL.
+
+---
+**INSTRUCCIONES PARA ESTA IMAGEN**
+---
 ${selectedCategoryPrompt}
 
-REQUISITOS:
-- Mantén tono femenino mexicano un 80% un 20% tono masculino mexicano, irónico, sarcastico y con humor ácido.
-- Censura palabras fuertes así: p4rte, puch4ina, tóxic0, od10,4rm4 etc.
-- Cada texto debe sentirse como un meme que genera debate, risa o morbo.
-- No describas la imagen: interpreta lo que *emocionalmente está insinuando*.
-- No des explicaciones; solo dame los textos finales.
+---
+**REGLAS DE ORO (INNEGOCIABLES)**
+---
+*   **NO describas la imagen.**
+*   **NO narres.**
+*   **Censura palabras fuertes así:** pu***, we**, hdp, tóxic0, m4lo, etc.
+*   **NADA de política o violencia explícita.**
+*   **Entrega únicamente el texto en el formato exacto solicitado.** No añadas introducciones, conclusiones ni tu análisis.
     `;
 }
 
 const getPhrasePrompt = (count: number, length: 'muy-corto' | 'corto' | 'largo') => {
-    const lengthInstructions = {
-        'muy-corto': 'Cada frase debe tener 1 línea de texto, corta y directa como un tweet.',
-        'corto': 'Cada frase debe tener entre 1 y 2 líneas de texto, perfectas para un post.',
-        'largo': 'Cada frase debe tener entre 3 y 4 líneas, como una reflexión breve pero contundente.',
-    };
-
-    const instruction = lengthInstructions[length] || 'Las frases deben ser cortas y directas.';
-
+    // El parámetro 'length' se mantiene por compatibilidad de la firma, pero el nuevo prompt
+    // tiene instrucciones de longitud superiores y autocontenidas.
     return `
-**Tu Rol:** Eres un creador de contenido viral experto en redes sociales, especializado en frases que conectan emocionalmente con un público femenino joven y adulto. Tu estilo es como el de 'Blog Fun', 'Zeneida' o 'Jarhat Pacheco': directo, ingenioso, a veces sarcástico y siempre auténtico.
+**AGENTE PREMIUM — TEXTO VIRAL PARA BLOG FUN (SOLO TEXTO)**
 
-**Misión:** Genera ${count} frases originales y variadas que provoquen una reacción inmediata (risa, identificación, "¡totalmente!").
+A partir de ahora eres La Escritora Secreta de las Redes:
+Una mezcla perfecta entre:
+tía de Facebook que opina fuerte
+narradora de novela mexicana
+amiga que te manda indirectas
+copywriter experto en interacción
+psicóloga de barrio
+chismosa profesional
+creadora de frases que generan miles de comentarios
 
-**Reglas de Oro:**
-1.  **Longitud:** ${instruction}
-2.  **Tono y Temas:**
-    *   **Relaciones:** Amor, desamor, celos, casi algo, ex, expectativas vs. realidad.
-    *   **Sarcasmo y Humor:** Situaciones cotidianas de la vida adulta (trabajo, dinero, cansancio) con un toque irónico.
-    *   **Indirectas y "Chisme":** Frases que se sientan como un secreto contado entre amigas.
-    *   **Reflexiones Irónicas:** Pensamientos sobre la vida, pero sin ser un cliché de superación personal. Más bien, un autoengaño divertido.
-3.  **Estilo de Escritura:**
-    *   **Autenticidad:** Usa un lenguaje coloquial, como si hablaras con una amiga. Evita ser formal o poético.
-    *   **Censura Creativa:** Utiliza jerga de internet y censura sutil para palabras fuertes (ej: "puchaina", "f3liz", "m4l", "la queso", "bby").
-    *   **CERO CLICHÉS:** Prohibido usar frases cursis, motivacionales baratas o ideas muy repetidas. Busca siempre un giro inesperado.
-    *   **VARIEDAD ABSOLUTA:** Es CRÍTICO que no repitas estructuras (ej: no empezar todas las frases con "Yo cuando..." o "A veces..."). Cada frase debe ser única en su construcción.
+Tu misión: crear un texto ultracorto que active emociones intensas, morbo o debate.
 
-**Ejemplos de Calidad (Inspírate, no copies):**
-*   “Mi problema no es que me mientas, es que te creo.”
-*   “Yo también tuve un ‘quédate, no importa que me hagas pedazos’.”
-*   “A veces quisiera ser millonaria para ver si mis problemas de verdad son por dinero.”
-*   “Me anda buscando el SAT y también el que juró que no podía vivir sin mí.”
-*   “No me quemé, pero qué bien alumbré.”
-*   “Te perdono el casi algo, pero devélveme mis ganas de volver a intentar.”
-*   “Mi contacto de emergencia es mi mamá para que le diga a mi jefe que no voy a ir a trabajar.”
+Tu público:
+México (25–44), seguidores de novelas, chismes, historias emotivas, indirectas, peleas de pareja, reflexiones duras y humor picoso.
 
-**Formato de Salida Obligatorio:**
-Genera EXACTAMENTE ${count} frases. Clasifica cada una con UNO de los siguientes emojis. Puedes repetir emojis.
+---
+**PROCESO OBLIGATORIO**
+---
+
+🎯 **1. USA ESTOS ÁNGULOS EMOCIONALES COMO INSPIRACIÓN**
+Usa esta lista como inspiración para crear una gran variedad de frases:
+*   Indirecta para ex o amante
+*   Reflexión dura estilo novela
+*   “Me cansé”
+*   Celos disfrazados
+*   Chisme que suena personal
+*   Frase que activa debate Hombres vs Mujeres
+*   Confesión disfrazada de meme
+*   Humor tóxico suave
+*   Frase que parece sacada de un grupo escolar
+*   Vergüenza ajena
+*   Morbo emocional
+*   Nostalgia
+*   Realidad dura de la vida adulta
+*   Indirecta elegante pero filosa
+*   Súper polémica pero sin faltar respeto (censura palabras fuertes)
+
+✍️ **2. ENTREGA EL TEXTO VIRAL (solo esto)**
+Genera ${count} frases virales.
+
+**Reglas para cada frase:**
+*   Debe ser 1 línea o máximo 2 líneas si lo amerita.
+*   Contundente, dramático, emocional, sarcástico o polémico.
+*   Sonar MUY “compartible”.
+*   Como si fuera una indirecta que alguien publicaría en su muro.
+*   Mexicano, realista, sin palabras rebuscadas.
+*   Groserías censuradas (ej: pu***, we**) solo si aportan valor.
+*   Nada político ni de explicaciones.
+
+---
+**FORMATO DE SALIDA OBLIGATORIO**
+---
+Genera EXACTAMENTE ${count} frases. Clasifica CADA UNA con UNO de los siguientes emojis. Puedes repetir emojis.
 💔: [Texto de la frase sobre relaciones o desamor]
 😏: [Texto de la frase con chisme, indirecta o sarcasmo de relaciones]
 😅: [Texto de la frase con humor sobre la vida cotidiana]
 😌: [Texto de la frase con una reflexión irónica o nostálgica]
 😤: [Texto de la frase con sarcasmo general, estrés o queja graciosa]
-... y así hasta completar las ${count} frases.
 
-Para asegurar la aleatoriedad, usa este número como semilla: ${Math.random()}.
-`;
+Solo responde con la lista de frases. No añadas introducciones ni conclusiones.
+    `;
+};
+
+const getTrendingPhrasePrompt = (topic: string, timeRangeText: string, count: number) => {
+    return `
+**AGENTE PREMIUM — CONTENIDO VIRAL DE TENDENCIAS (SOLO TEXTO)**
+
+**Actúa como La Escritora Secreta de las Redes:** una experta en crear frases virales, chismosas, polémicas y emocionales para un público mexicano (25-44 años).
+
+**MISIÓN CRÍTICA:**
+1.  **INVESTIGA PRIMERO:** Usa la herramienta de búsqueda para encontrar la información más RECIENTE y relevante sobre el tema: **"${topic}"**, enfocándote en lo ocurrido en **"${timeRangeText}"**. Busca los puntos clave, el drama, las opiniones y el chisme.
+2.  **GENERA CONTENIDO VIRAL:** Basado en tu investigación, genera ${count} frases cortas y potentes que capturen la esencia de la tendencia.
+
+**ÁNGULOS A EXPLORAR (elige los más relevantes para el tema):**
+*   Opinión polémica (sin ser ofensivo).
+*   Chisme que suena a verdad.
+*   Reflexión dramática estilo novela.
+*   Humor sarcástico sobre la situación.
+*   Una "indirecta" que todos entiendan.
+*   Frase que inicie un debate (Hombres vs. Mujeres, etc.).
+
+**REGLAS DE ORO:**
+*   **Frases cortas:** 1 o 2 líneas máximo.
+*   **Tono:** Mexicano, realista, como si lo publicara alguien en su muro.
+*   **Objetivo:** Máxima interacción (compartir, comentar).
+*   **Censura groserías:** ej. we**, pu***.
+*   **NADA de política.**
+
+---
+**FORMATO DE SALIDA OBLIGATORIO**
+---
+Genera EXACTAMENTE ${count} frases. Clasifica CADA UNA con UNO de los siguientes emojis. Puedes repetir emojis.
+💔: [Relaciones, desamor, drama personal]
+😏: [Chisme, indirecta, sarcasmo]
+😅: [Humor, situación irónica]
+😌: [Reflexión, nostalgia]
+😤: [Queja, estrés, opinión fuerte]
+
+Solo responde con la lista de frases. Sin introducciones ni resúmenes de tu búsqueda.
+    `;
 };
 
 const parseMemeTitles = (text: string) => {
@@ -168,22 +241,44 @@ const parseMemeTitles = (text: string) => {
 }
 
 const parsePhrases = (text: string) => {
-    const lines = text.split('\n').filter(line => line.trim() !== '');
+    const lines = text.split('\n').filter(line => line.trim() !== '' && !line.trim().startsWith('*'));
     const phrases: Record<string, string>[] = [];
+    const emojiMap: Record<string, string> = {
+        '💔': 'relaciones',
+        '😏': 'chisme',
+        '😅': 'humor',
+        '😌': 'reflexion',
+        '😤': 'sarcasmoFrase',
+    };
+    const emojis = Object.keys(emojiMap);
 
     lines.forEach(line => {
-        if (line.startsWith('💔:')) {
-            phrases.push({ relaciones: line.replace('💔:', '').trim() });
-        } else if (line.startsWith('😏:')) {
-            phrases.push({ chisme: line.replace('😏:', '').trim() });
-        } else if (line.startsWith('😅:')) {
-            phrases.push({ humor: line.replace('😅:', '').trim() });
-        } else if (line.startsWith('😌:')) {
-            phrases.push({ reflexion: line.replace('😌:', '').trim() });
-        } else if (line.startsWith('😤:')) {
-            phrases.push({ sarcasmoFrase: line.replace('😤:', '').trim() });
+        const trimmedLine = line.trim();
+        for (const emoji of emojis) {
+            if (trimmedLine.startsWith(emoji)) {
+                // Regex to remove the emoji and an optional colon with space
+                const phraseText = trimmedLine.replace(new RegExp(`^${emoji}:?\\s*`), '').trim();
+                if(phraseText) {
+                    phrases.push({ [emojiMap[emoji]]: phraseText });
+                }
+                return; // Go to the next line
+            }
         }
     });
+
+    // Fallback: If parsing fails, maybe the AI just returned a list of phrases without emojis.
+    if (phrases.length === 0 && lines.length > 0) {
+        console.warn("La respuesta de la IA no contenía los emojis esperados. Aplicando fallback.");
+        const categories = ['relaciones', 'chisme', 'humor', 'reflexion', 'sarcasmoFrase'];
+        lines.forEach((line, index) => {
+            // Also clean up potential list markers like "1. " or "- "
+            const cleanedLine = line.trim().replace(/^\d+\.\s*|^-*\s*/, '');
+            if(cleanedLine) {
+                 const category = categories[index % categories.length];
+                 phrases.push({ [category]: cleanedLine });
+            }
+        });
+    }
 
     return phrases;
 }
@@ -229,6 +324,7 @@ export const generateTitles = async (imageFile: File, apiKey: string, category: 
     }
     
     if (Object.keys(parsed).length === 0) {
+        console.error("Raw Gemini response (titles):", response.text);
         throw new Error("La respuesta de la IA no tuvo el formato esperado.");
     }
 
@@ -239,9 +335,10 @@ export const generateTitles = async (imageFile: File, apiKey: string, category: 
     if (error instanceof Error && error.message.includes('API key not valid')) {
         throw new Error('La API Key no es válida. Por favor, verifica e introdúcela de nuevo.');
     }
-    return {
-        error: "Error al generar.",
-    };
+    if (error instanceof Error && error.message.includes('formato esperado')) {
+        throw error;
+    }
+    throw new Error('No se pudieron generar los títulos. Intenta de nuevo.');
   }
 };
 
@@ -256,6 +353,7 @@ export const generatePhrases = async (apiKey: string, count: number, length: 'mu
 
         const parsed = parsePhrases(response.text);
         if (parsed.length === 0) {
+            console.error("Raw Gemini response (phrases):", response.text);
             throw new Error("La respuesta de la IA no tuvo el formato esperado para las frases.");
         }
         return parsed;
@@ -265,6 +363,47 @@ export const generatePhrases = async (apiKey: string, count: number, length: 'mu
          if (error instanceof Error && error.message.includes('API key not valid')) {
             throw new Error('La API Key no es válida. Por favor, verifica e introdúcela de nuevo.');
         }
-        return [{ error: "No se pudieron generar las frases. Intenta de nuevo." }];
+        if (error instanceof Error && error.message.includes('formato esperado')) {
+            throw error;
+        }
+        throw new Error('No se pudieron generar las frases. Intenta de nuevo.');
+    }
+};
+
+export const generateTrendingPhrases = async (apiKey: string, topic: string, timeRange: 'now' | '4h' | '24h' | 'week', count: number): Promise<Record<string, string>[]> => {
+    const ai = new GoogleGenAI({ apiKey });
+    try {
+        const timeRangeMap = {
+            'now': 'la última hora',
+            '4h': 'las últimas 4 horas',
+            '24h': 'las últimas 24 horas',
+            'week': 'la última semana',
+        };
+        const timeRangeText = timeRangeMap[timeRange] || 'recientemente';
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: getTrendingPhrasePrompt(topic, timeRangeText, count),
+            config: {
+                tools: [{ googleSearch: {} }],
+            },
+        });
+
+        const parsed = parsePhrases(response.text);
+        if (parsed.length === 0) {
+            console.error("Raw Gemini response (trending phrases):", response.text);
+            throw new Error("La respuesta de la IA no tuvo el formato esperado para las frases de tendencia.");
+        }
+        return parsed;
+
+    } catch (error) {
+        console.error("Error generating trending phrases:", error);
+        if (error instanceof Error && error.message.includes('API key not valid')) {
+            throw new Error('La API Key no es válida. Por favor, verifica e introdúcela de nuevo.');
+        }
+        if (error instanceof Error && error.message.includes('formato esperado')) {
+            throw error;
+        }
+        throw new Error('No se pudieron generar las frases de tendencia. Intenta de nuevo.');
     }
 };

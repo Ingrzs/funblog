@@ -1,5 +1,4 @@
-
-import { generateTitles, generatePhrases } from './services/geminiService.js';
+import { generateTitles, generatePhrases, generateTrendingPhrases } from './services/geminiService.js';
 import { createMemeImage, createPhraseImage, createTweetImage } from './services/imageService.js';
 
 const DEFAULT_AVATAR_URL = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgdHJhbnNmb3JtPSJyb3RhdGUoMTAgNTAgNTApIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iI0ZGRiIgc3Ryb2tlPSIjREREIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNIDY1LDQwIEMgNjgsMzUgNzIsMzUgNzUsNDAiIHN0cm9rZT0iYmxhY2siIHN0cm9rZS13aWR0aD0iNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiAvPjxwYXRoIGQ9Ik0gMzAsNjUgUSA1MCw4NSA3MCw2NSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSI2IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIC8+PGNpcmNsZSBjeD0iMzUiIGN5PSI0MCIgcj0iNSIgZmlsbD0iYmxhY2siIC8+PC9nPjwvc3ZnPg==';
@@ -36,6 +35,8 @@ const state = {
     memeCategory: 'pareja',
     phraseCount: 10,
     phraseLength: 'corto',
+    trendingTopic: '',
+    trendingTimeRange: '24h',
     designSettings: {
         showHeader: true,
         profileName: 'Blogfun',
@@ -53,6 +54,7 @@ const DOMElements = {
     apiKeyContainer: document.getElementById('api-key-manager-container'),
     modeMemeBtn: document.getElementById('mode-meme-btn'),
     modeFraseBtn: document.getElementById('mode-frase-btn'),
+    modeTendenciaBtn: document.getElementById('mode-tendencia-btn'),
     modeTweetBtn: document.getElementById('mode-tweet-btn'),
     errorContainer: document.getElementById('error-container'),
     uploaderContainer: document.getElementById('uploader-container'),
@@ -64,6 +66,7 @@ const DOMElements = {
     memeCategoryContainer: document.getElementById('meme-category-container'),
     mainContent: document.getElementById('main-content'),
     phraseOptionsContainer: document.getElementById('phrase-options-container'),
+    trendingOptionsContainer: document.getElementById('trending-options-container'),
 };
 
 // --- HELPERS ---
@@ -172,6 +175,44 @@ const getMemeCategorySelectorHTML = () => {
     `;
 };
 
+const getTrendingOptionsHTML = () => {
+    const timeRanges = [
+        { id: 'now', label: 'Última hora' },
+        { id: '4h', label: 'Últimas 4h' },
+        { id: '24h', label: 'Últimas 24h' },
+        { id: 'week', label: 'Última semana' },
+    ];
+    return `
+    <div class="flex flex-col items-center justify-center gap-6 mb-8 max-w-2xl mx-auto">
+         <div class="w-full">
+            <label for="trending-topic-input" class="block text-lg font-semibold text-gray-300 mb-3 text-center">Escribe el tema de tendencia:</label>
+            <input type="text" id="trending-topic-input" value="${state.trendingTopic}" placeholder="Ej: Estreno de serie, nueva canción, polémica..." class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-center"/>
+         </div>
+        <div class="flex flex-col items-center gap-3">
+            <label class="text-gray-300">Buscar en:</label>
+            <div class="flex flex-wrap justify-center gap-2 rounded-lg bg-gray-900 p-1">
+                ${timeRanges.map(opt => `
+                    <button
+                        data-range="${opt.id}"
+                        class="trending-range-btn px-4 py-2 text-sm font-semibold rounded-md transition-colors ${
+                            state.trendingTimeRange === opt.id
+                                ? 'bg-orange-600 text-white'
+                                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                        }">
+                        ${opt.label}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <label for="phrase-count-input" class="text-gray-300">Número de frases:</label>
+            <input type="number" id="phrase-count-input" value="${state.phraseCount}" min="1" max="20" class="bg-gray-700 border border-gray-600 rounded px-2 py-1 w-20 text-center" />
+        </div>
+    </div>
+    `;
+};
+
+
 const getPhraseOptionsHTML = () => {
     const isTweetMode = state.titleType === 'tweet';
     const lengthOptions = isTweetMode ? [
@@ -223,7 +264,7 @@ const getResultsHTML = () => `
 
 const getGlobalControlsHTML = () => {
     const { showHeader, profileName, profileHandle, profileAvatarUrl, watermark, textAlign } = state.designSettings;
-    const isTextMode = state.titleType === 'frase' || state.titleType === 'tweet';
+    const isTextMode = state.titleType === 'frase' || state.titleType === 'tweet' || state.titleType === 'tendencia';
     const alignmentOptions = [
         { align: 'left', label: 'Izquierda', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" /></svg>' },
         { align: 'center', label: 'Centro', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M6.75 17.25h10.5" /></svg>' },
@@ -301,7 +342,7 @@ const getGlobalControlsHTML = () => {
 
 const getMemeCardHTML = (meme) => {
     const { showHeader, profileName, profileHandle, profileAvatarUrl, watermark, textAlign } = state.designSettings;
-    const isPhraseMode = state.titleType === 'frase';
+    const isPhraseMode = state.titleType === 'frase' || state.titleType === 'tendencia';
     const isTweetMode = state.titleType === 'tweet';
 
     let containerClasses = 'bg-gray-100 text-gray-900';
@@ -382,12 +423,13 @@ const getFooterButtonsHTML = () => {
     if (hasImages || hasMemes) {
         buttons += `<button id="reset-btn" class="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-white font-bold rounded-lg transition-colors">Empezar de Nuevo</button>`;
     }
-    const showGenerate = (state.titleType === 'meme' && hasImages && !hasMemes) || ((state.titleType === 'frase' || state.titleType === 'tweet') && !hasMemes);
+    const showGenerate = (state.titleType === 'meme' && hasImages && !hasMemes) || ((state.titleType === 'frase' || state.titleType === 'tweet' || state.titleType === 'tendencia') && !hasMemes);
     if (showGenerate) {
         let buttonText = 'Generar';
         if (state.titleType === 'meme') buttonText = 'Generar Títulos';
         if (state.titleType === 'frase') buttonText = 'Generar Frases';
         if (state.titleType === 'tweet') buttonText = 'Generar Tweets';
+        if (state.titleType === 'tendencia') buttonText = 'Generar Frases de Tendencia';
         buttons += `<button id="generate-btn" class="px-8 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold rounded-lg transition-all transform hover:scale-105 shadow-lg">
             ${buttonText}
         </button>`;
@@ -421,13 +463,20 @@ const render = () => {
         DOMElements.phraseOptionsContainer.innerHTML = getPhraseOptionsHTML();
     }
     
+    // Trending Options
+    const showTrendingOptions = state.titleType === 'tendencia' && state.generatedMemes.length === 0 && !state.isLoading;
+    DOMElements.trendingOptionsContainer.classList.toggle('hidden', !showTrendingOptions);
+    if (showTrendingOptions) {
+        DOMElements.trendingOptionsContainer.innerHTML = getTrendingOptionsHTML();
+    }
+    
     DOMElements.loadingContainer.classList.toggle('hidden', currentView !== 'loading');
     DOMElements.uploaderContainer.classList.toggle('hidden', currentView !== 'upload' || state.titleType !== 'meme');
     DOMElements.previewContainer.classList.toggle('hidden', currentView !== 'preview');
     DOMElements.resultsContainer.classList.toggle('hidden', currentView !== 'results');
     
     if (currentView === 'loading') {
-        DOMElements.loadingText.textContent = state.titleType === 'meme' ? 'Analizando imágenes...' : (state.titleType === 'tweet' ? 'Generando tweets...' : 'Generando frases...');
+        DOMElements.loadingText.textContent = state.titleType === 'meme' ? 'Analizando imágenes...' : (state.titleType === 'tweet' ? 'Generando tweets...' : (state.titleType === 'tendencia' ? 'Buscando tendencias...' : 'Generando frases...'));
     } else if (currentView === 'upload' && state.titleType === 'meme') {
         DOMElements.uploaderContainer.innerHTML = getUploaderHTML();
     } else if (currentView === 'preview') {
@@ -455,9 +504,9 @@ const handleModeChange = (type) => {
     
     if (type === 'tweet') {
         state.designSettings.textAlign = 'left';
-    } else if (type === 'frase') {
+    } else if (type === 'frase' || type === 'tendencia') {
         state.designSettings.textAlign = 'center';
-    } else {
+    } else { // meme
         state.designSettings.textAlign = 'left';
     }
 
@@ -472,6 +521,12 @@ const handleModeChange = (type) => {
     DOMElements.modeFraseBtn.classList.toggle('shadow-md', type === 'frase');
     DOMElements.modeFraseBtn.classList.toggle('text-gray-300', type !== 'frase');
     DOMElements.modeFraseBtn.classList.toggle('hover:bg-gray-700', type !== 'frase');
+    
+    DOMElements.modeTendenciaBtn.classList.toggle('bg-orange-600', type === 'tendencia');
+    DOMElements.modeTendenciaBtn.classList.toggle('text-white', type === 'tendencia');
+    DOMElements.modeTendenciaBtn.classList.toggle('shadow-md', type === 'tendencia');
+    DOMElements.modeTendenciaBtn.classList.toggle('text-gray-300', type !== 'tendencia');
+    DOMElements.modeTendenciaBtn.classList.toggle('hover:bg-gray-700', type !== 'tendencia');
 
     DOMElements.modeTweetBtn.classList.toggle('bg-sky-600', type === 'tweet');
     DOMElements.modeTweetBtn.classList.toggle('text-white', type === 'tweet');
@@ -508,6 +563,12 @@ const handleGenerate = async () => {
         render();
         return;
     }
+    if (state.titleType === 'tendencia' && !state.trendingTopic.trim()) {
+        state.error = 'Por favor, introduce un tema de tendencia para generar frases.';
+        render();
+        return;
+    }
+    
     state.isLoading = true;
     state.error = null;
     state.generatedMemes = [];
@@ -523,6 +584,15 @@ const handleGenerate = async () => {
             state.generatedMemes = await Promise.all(memePromises);
         } else if (state.titleType === 'frase' || state.titleType === 'tweet') {
             const results = await generatePhrases(state.apiKey, state.phraseCount, state.phraseLength);
+            const cleanedResults = results.map(p => cleanAllTitles(p));
+            state.generatedMemes = cleanedResults.map((p, index) => ({
+                id: `${state.titleType}-${Date.now()}-${index}`,
+                imageUrl: WHITE_PIXEL,
+                titles: p,
+                editText: Object.values(p)[0] || '',
+            }));
+        } else if (state.titleType === 'tendencia') {
+            const results = await generateTrendingPhrases(state.apiKey, state.trendingTopic, state.trendingTimeRange, state.phraseCount);
             const cleanedResults = results.map(p => cleanAllTitles(p));
             state.generatedMemes = cleanedResults.map((p, index) => ({
                 id: `${state.titleType}-${Date.now()}-${index}`,
@@ -556,6 +626,8 @@ const handleReset = () => {
     state.memeCategory = 'pareja';
     state.phraseCount = 10;
     state.phraseLength = 'corto';
+    state.trendingTopic = '';
+    state.trendingTimeRange = '24h';
     
     // Only reset watermark, keep profile settings
     state.designSettings.watermark = { type: 'none', text: 'Tu Marca de Agua', imageUrl: null, opacity: 0.7, size: 5, x: 50, y: 85, imageWidth: 0, imageHeight: 0 };
@@ -608,7 +680,7 @@ const handleDownload = async (button) => {
         };
 
         let dataUrl;
-        if (state.titleType === 'frase') {
+        if (state.titleType === 'frase' || state.titleType === 'tendencia') {
             dataUrl = await createPhraseImage(creationData);
         } else if (state.titleType === 'tweet') {
             dataUrl = await createTweetImage(creationData);
@@ -732,6 +804,7 @@ const initialize = () => {
     // Attach static listeners
     DOMElements.modeMemeBtn.addEventListener('click', () => handleModeChange('meme'));
     DOMElements.modeFraseBtn.addEventListener('click', () => handleModeChange('frase'));
+    DOMElements.modeTendenciaBtn.addEventListener('click', () => handleModeChange('tendencia'));
     DOMElements.modeTweetBtn.addEventListener('click', () => handleModeChange('tweet'));
 
     // Attach delegated listeners to parent containers
@@ -755,14 +828,35 @@ const initialize = () => {
         }
     });
 
-    DOMElements.phraseOptionsContainer.addEventListener('input', (e) => {
+    const commonPhraseInputHandler = (e) => {
         if (e.target.id === 'phrase-count-input') {
             let count = parseInt(e.target.value, 10);
             if (isNaN(count) || count < 1) count = 1;
             if (count > 20) count = 20;
             state.phraseCount = count;
         }
+    };
+    
+    DOMElements.phraseOptionsContainer.addEventListener('input', commonPhraseInputHandler);
+    DOMElements.trendingOptionsContainer.addEventListener('input', commonPhraseInputHandler);
+    
+    DOMElements.trendingOptionsContainer.addEventListener('input', (e) => {
+        if (e.target.id === 'trending-topic-input') {
+            state.trendingTopic = e.target.value;
+        }
     });
+
+    DOMElements.trendingOptionsContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.trending-range-btn');
+        if (btn) {
+            const range = btn.dataset.range;
+            if (range && range !== state.trendingTimeRange) {
+                state.trendingTimeRange = range;
+                render();
+            }
+        }
+    });
+
 
     DOMElements.phraseOptionsContainer.addEventListener('click', (e) => {
         const btn = e.target.closest('.phrase-length-btn');
